@@ -5,92 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EMUDriverTraining — Markdown Viewer</title>
   <meta name="color-scheme" content="light dark" />
-  <style>
-    :root{
-      --bg:#0b0c0f; --panel:#11131a; --fg:#e7eaf3; --muted:#9aa3b2; --line:#262b36; --accent:#7aa2ff;
-      --radius:14px; --maxw:980px;
-      --indent-step: 2.5rem; /* 每層縮排寬度 */
-      --gutter-alpha: .8;    /* 直線透明度 */
-      --gutter-width: 3px;    /* 直線粗細 */
-      --bullet-size: 6px;     /* 實心點大小 */
-    }
-    html,body{height:100%}
-    body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
-    .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 60px}
-
-    /* 隱藏頁首品牌/副標與標題列（依你的需求） */
-    .hdr{display:none}
-    .card{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden}
-    @media(prefers-color-scheme:dark){body{background:linear-gradient(180deg,var(--bg),#0f131d);color:var(--fg)}.card{background:var(--panel);border-color:var(--line)}}
-    .titlebar{display:none}
-
-    .content{padding:18px}
-    .md-root h1{font-size:28px;margin:12px 0 14px}
-    .md-root h2{font-size:22px;margin:26px 0 10px;padding-top:6px;border-top:1px solid #0002}
-    .md-root h3{font-size:18px;margin:18px 0 8px}
-    .md-root p{margin:10px 0}
-    .md-root img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
-    pre{background:#0001;padding:12px;border-radius:8px}
-
-    /* --- Roam 風章節折疊 + 依層級縮排 + 直線 gutter --- */
-    .section{
-      position: relative;
-      margin-left: calc(var(--depth, 0) * var(--indent-step)); /* 依層級縮排 */
-    }
-    /* 直線：深度>0 才畫（與 Roam 類似） */
-    .section.has-gutter::before{
-      content:"";
-      position:absolute;
-      left: calc(-0.5 * var(--indent-step)); /* 線在縮排槽中央 */
-      top: 0; bottom: 0;
-      width: var(--gutter-width);
-      background: color-mix(in oklab, var(--line) 100%, transparent calc(100% - 100%));
-      opacity: var(--gutter-alpha);
-    }
-    /* 標題列：按鈕在左、文字在右 */
-    .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
-      position: relative;
-      display:flex; align-items:center; gap:.5rem;
-      min-height: 1.6em; /* 讓圓點置中更穩定 */
-    }
-    /* ✅ 實心點：每層都有，與 gutter 對齊；不影響版面寬度 */
-    .section > h2::after,
-    .section > h3::after,
-    .section > h4::after,
-    .section > h5::after,
-    .section > h6::after{
-      content:"";
-      position:absolute;
-      left: calc(-0.5 * var(--indent-step)); /* 與直線同一條垂直線 */
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: var(--bullet-size);
-      height: var(--bullet-size);
-      border-radius: 50%;
-      background: currentColor;   /* 跟隨文字色 */
-      /* 為了在深色/淺色主題上對比更好，加一圈淡淡的外框 */
-      box-shadow: 0 0 0 2px color-mix(in oklab, var(--panel) 70%, transparent);
-      pointer-events: none; /* 不擋到點擊 */
-    }
-
-    .section-toggle{
-      border:1px solid #d0d4e0;
-      background:#f6f7fb;
-      padding:0 .45rem;
-      border-radius:6px;
-      cursor:pointer;
-      font-size:12px; line-height:20px;
-      user-select:none;
-      display:inline-flex; align-items:center; justify-content:center;
-      min-width:2ch;
-      margin-right:.25rem; /* 和文字保持一點距離 */
-      flex: 0 0 auto;      /* 不要被擠壓 */
-    }
-    @media (prefers-color-scheme: dark){
-      .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
-    }
-    .section-body.collapsed{ display:none; }
-  </style>
+  <!-- 只載入外部樣式，避免重複子彈 -->
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="wrap">
@@ -131,6 +47,7 @@
         const { body } = parseFrontmatter(text);
 
         root.innerHTML = md.render(body);
+        // 預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
@@ -179,7 +96,7 @@
         const wrap = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
-        if (depth > 0) wrap.classList.add('has-gutter'); // 深度>0 才畫直線
+        if (depth > 0) wrap.classList.add('has-gutter');
         h.parentNode.insertBefore(wrap, h);
         wrap.appendChild(h);
 
@@ -203,7 +120,6 @@
             setToggleVisual(btn, !isNowCollapsed);
             saveState(key, body.classList.contains('collapsed'));
           });
-          // 按鈕在文字左側（不與 bullet 對齊，bullet 是絕對定位）
           h.insertBefore(btn, h.firstChild);
         }
       }
@@ -238,7 +154,6 @@
       return out;
     }
 
-    /* ---------- 狀態保存 ---------- */
     function saveState(key, val){ try{ localStorage.setItem(key, JSON.stringify(!!val)); }catch(e){} }
     function loadState(key){
       try{

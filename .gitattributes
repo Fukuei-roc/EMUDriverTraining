@@ -1,15 +1,22 @@
-# 文字檔一律標準化為 LF（跨平台最省事）
-* text=auto eol=lf
+# ==========================================
+# Git 行尾統一設定
+# ==========================================
 
-# Windows 專用腳本可用 CRLF（按需）
+# 所有文字檔一律使用 LF（跨平台最省事）
+* text eol=lf
+
+# Windows 專用腳本保留 CRLF
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
-# 保持二進位檔不改行尾
+# 二進位檔保持原樣，不進行行尾轉換
 *.png binary
 *.jpg binary
+*.jpeg binary
 *.gif binary
 *.pdf binary
+*.zip binary
+*.exe binary
 
 # 若你不想讓壓縮後的 js 被改行尾，可視需要加這行
 *.min.js binary

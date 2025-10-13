@@ -1,0 +1,181 @@
+/* ===========================
+   EMUDriverTraining — styles
+   =========================== */
+
+/* ---- 基本佈景 ---- */
+:root{
+    --bg:#0b0c0f;
+    --panel:#11131a;
+    --fg:#0e1524;
+    --fg-invert:#e7eaf3;
+    --muted:#6b778d;
+    --muted-invert:#9aa3b2;
+    --line:#dfe3ee;           /* 淺色下的邊線 */
+    --line-invert:#2a3142;    /* 深色下的邊線 */
+    --accent:#7aa2ff;
+  
+    --radius:14px;
+    --maxw:980px;
+  
+    /* 折疊樹狀視覺 */
+    --indent:22px;            /* 每一層的縮排寬 */
+    --gutter:18px;            /* 子彈 + 三角形 的作用區寬 */
+    --rail-w:1.5px;           /* 連接直線寬度 */
+    --bullet-size:6px;        /* 實心點直徑 */
+    --rail:#dbe1f1;           /* 直線顏色（亮） */
+    --bullet:#6b778d;         /* 實心點顏色（亮） */
+  }
+  
+  @media (prefers-color-scheme: dark){
+    :root{
+      --fg:#e7eaf3;
+      --muted:#9aa3b2;
+      --line:#262b36;
+      --rail:#2a3142;
+      --bullet:#9aa3b2;
+    }
+  }
+  
+  html,body{height:100%}
+  body{
+    margin:0;
+    color:var(--fg);
+    font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif;
+    background:#fff;
+  }
+  @media (prefers-color-scheme: dark){
+    body{ background:linear-gradient(180deg,var(--bg),#0f131d); }
+  }
+  
+  .wrap{ max-width:var(--maxw); margin:0 auto; padding:20px 16px 60px; }
+  
+  /* 可依需求繼續隱藏頁首與標題列 */
+  .hdr{ display:none; }
+  .titlebar{ display:none; }
+  
+  /* 卡片容器 */
+  .card{
+    background:#fff;
+    border:1px solid #e6e8ef;
+    border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(0,0,0,.06);
+    overflow:hidden;
+  }
+  @media (prefers-color-scheme: dark){
+    .card{ background:var(--panel); border-color:var(--line); }
+  }
+  .content{ padding:18px; }
+  
+  /* Markdown 文字排版（精簡） */
+  .md-root h1{ font-size:28px; margin:12px 0 14px; }
+  .md-root h2{ font-size:22px; margin:26px 0 10px; padding-top:6px; border-top:1px solid #0002; }
+  .md-root h3{ font-size:18px; margin:18px 0 8px; }
+  .md-root p{ margin:10px 0; }
+  .md-root img{ max-width:100%; height:auto; display:block; margin:10px auto; border-radius:8px; }
+  pre{ background:#0001; padding:12px; border-radius:8px; }
+  
+  /* ===========================
+     Roam 風樹狀：連貫直線＋實心點＋縮排
+     =========================== */
+  
+  /* section 由 JS 包裝：每個可折疊章節一個 .section
+     JS 會在 .section 上設定自訂屬性 style="--depth:N" */
+  .section{
+    position: relative;
+    /* 內側縮排 = 層級 * 縮排寬 + 左側圖示區 */
+    --_pad: calc(var(--depth, 0) * var(--indent) + var(--gutter));
+    padding-left: var(--_pad);
+  }
+  
+  /* 連接直線：每一個 section 自己畫一條，因為有縮排，
+     巢狀會自然形成多條並保持連續（不受文字換行影響） */
+  .section::before{
+    content:"";
+    position:absolute;
+    /* 直線位置：位於圖示區最左側（對齊樹狀軸） */
+    left: calc(var(--_pad) - var(--gutter) / 2);
+    top: -12px;
+    bottom: -12px;
+    width: var(--rail-w);
+    background: var(--rail);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  /* H2~H6 作為樹狀項目標題：使用 Flex 以便放「實心點」與「三角形」 */
+  .section > h2,
+  .section > h3,
+  .section > h4,
+  .section > h5,
+  .section > h6{
+    display:flex;
+    align-items:center;
+    column-gap:.5rem;
+    margin: 0.35rem 0;
+    min-height: 28px; /* 讓行高穩定，直線在短行也不會斷 */
+  }
+  
+  /* --- 實心點（對齊的圓點）：使用 ::before，永遠在最左側，與樹狀軸對齊 --- */
+  .section > h2::before,
+  .section > h3::before,
+  .section > h4::before,
+  .section > h5::before,
+  .section > h6::before{
+    content:"";
+    flex:none;
+    display:inline-block;
+    width: var(--bullet-size);
+    height: var(--bullet-size);
+    border-radius: 50%;
+    background: var(--bullet);
+    /* 把圓點放在圖示區中央，並與文字保持一點間隔 */
+    margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + 2px);
+    margin-right: .35rem;
+    position: relative;
+    z-index: 1; 
+  }
+  
+  /* --- 收合/展開按鈕（小三角形）— 由 JS 插入 <button class="section-toggle"> ---
+     要求「三角形不參與對齊，顯示在文字左邊」：
+     這裡放在圓點之後、文字之前，不和圓點對齊網格 */
+  .section-toggle{
+    flex:none;
+    border:1px solid var(--line);
+    background:#f6f7fb;
+    padding: 0 .45rem;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    line-height:20px;
+    user-select:none;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 2ch;        /* 保持寬度一致，避免圖示跳動 */
+    margin-right: .25rem;  /* 與文字留間距 */
+  }
+  @media (prefers-color-scheme: dark){
+    .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:var(--fg-invert); }
+  }
+  
+  /* 內容收合狀態（JS 會切換 .collapsed） */
+  .section-body.collapsed{ display:none; }
+  
+  /* 讓最外層（depth=0）也有清楚的左邊界，但不畫圓點前的線段過粗 */
+  .section[style*="--depth: 0"]::before{
+    background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
+  }
+  
+  /* 針對長段落、換行時保持左側直線連續感：標題下面的內容區塊
+     內部不需要額外 padding，直線由外層 ::before 做到連續 */
+  .section-body > *{ margin-block: .35rem .35rem; }
+  
+  /* 讓圖像不會壓到左側樹狀區；若需要也可以取消這行 */
+  .section-body img{ margin-left: .25rem; }
+  
+  /* 內文中普通 H2~H6（沒有被包成 section 的）仍維持一般樣式 */
+  .md-root :not(.section) > h2{ font-size:22px; margin:26px 0 10px; padding-top:6px; border-top:1px solid #0002; }
+  .md-root :not(.section) > h3{ font-size:18px; margin:18px 0 8px; }
+  
+  /* 連結風格（可加可不加） */
+  .md-root a{ color:var(--accent); text-decoration:none; }
+  .md-root a:hover{ text-decoration:underline; }
+  
