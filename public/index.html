@@ -9,7 +9,9 @@
     :root{
       --bg:#0b0c0f; --panel:#11131a; --fg:#e7eaf3; --muted:#9aa3b2; --line:#262b36; --accent:#7aa2ff;
       --radius:14px; --maxw:980px;
-      --indent-step: 5rem; /* 縮排一格距離：可自行調整 */
+      --indent-step: 2.5rem; /* 每層縮排寬度 */
+      --gutter-alpha: .5;    /* 直線透明度，可調 */
+      --gutter-width: 4px;    /* 直線粗細 */
     }
     html,body{height:100%}
     body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
@@ -29,32 +31,41 @@
     .md-root img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
     pre{background:#0001;padding:12px;border-radius:8px}
 
-    /* --- Roam 風章節折疊樣式 + 依層級縮排 --- */
-    .section {
+    /* --- Roam 風章節折疊 + 依層級縮排 + 直線 gutter --- */
+    .section{
       position: relative;
-      /* 依深度縮排；深度由 JS 設定 --depth 變數 */
-      margin-left: calc(var(--depth, 0) * var(--indent-step));
+      margin-left: calc(var(--depth, 0) * var(--indent-step)); /* 依層級縮排 */
     }
+    /* 直線：H3 起會看到（depth>0 時 JS 會加 .has-gutter） */
+    .section.has-gutter::before{
+      content:"";
+      position:absolute;
+      left: calc(-0.5 * var(--indent-step)); /* 線放在縮排槽正中間 */
+      top: 0; bottom: 0;
+      width: var(--gutter-width);
+      background: color-mix(in oklab, var(--line) 100%, transparent calc(100% - 100%));
+      opacity: var(--gutter-alpha);
+    }
+    /* 讓標題與按鈕橫向排列；按鈕在文字左側 */
     .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
-      display: flex; align-items: center; gap: .5rem;
+      display:flex; align-items:center; gap:.5rem;
     }
-    .section-toggle {
-      border: 1px solid #d0d4e0;
-      background: #f6f7fb;
-      padding: 0 .45rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 20px;
-      user-select: none;
+    .section-toggle{
+      border:1px solid #d0d4e0;
+      background:#f6f7fb;
+      padding:0 .45rem;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:12px; line-height:20px;
+      user-select:none;
       display:inline-flex; align-items:center; justify-content:center;
-      min-width: 2ch;  /* 保持寬度一致，避免跳動 */
-      margin-right: .25rem; /* 在文字左側留間距 */
+      min-width:2ch;
+      margin-right:.25rem;
     }
     @media (prefers-color-scheme: dark){
-      .section-toggle { background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
+      .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
     }
-    .section-body.collapsed { display: none; }
+    .section-body.collapsed{ display:none; }
   </style>
 </head>
 <body>
@@ -75,7 +86,6 @@
     </article>
   </div>
 
-  <!-- 使用本地 markdown-it -->
   <script src="/lib/markdown-it.min.js"></script>
   <script>
   (function(){
@@ -91,15 +101,12 @@
       const md = window.markdownit({ html:false, linkify:true, typographer:true });
 
       try{
-        const res = await fetch(MD_SRC, { cache:'no-store' });
+        const res  = await fetch(MD_SRC, { cache:'no-store' });
         if(!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText);
         const text = await res.text();
-        const { /* meta, */ body } = parseFrontmatter(text);
+        const { body } = parseFrontmatter(text);
 
-        // 渲染 Markdown 正文
         root.innerHTML = md.render(body);
-
-        // 自動為具有子標題的章節加上收合按鈕（H2~H5），並預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
@@ -107,19 +114,17 @@
       }
     }
 
-    /* ---------- 自動折疊：對 H2~H5 中有子項目的章節加按鈕 + 設定縮排深度 ---------- */
+    /* ---------- 自動折疊 + 設定縮排深度 + 加直線 gutter ---------- */
     function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
-      // 一次擷取所有 H2~H6，再倒序處理，避免包裝影響後續節點定位
       const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
       const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
 
       for(let i = headings.length - 1; i >= 0; i--){
         const h = headings[i];
-        // 若此標題已經被包在 .section 裡，表示先前已處理過，略過
         if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
-        const curLv = levelOf(h);
-        const depth = Math.max(0, curLv - minLevel); // H2=0, H3=1, H4=2...
+        const curLv  = levelOf(h);
+        const depth  = Math.max(0, curLv - minLevel); // H2=0, H3=1, ...
         const bodyFrag = document.createDocumentFragment();
         let n = h.nextSibling;
         let hasChildHeading = false;
@@ -127,19 +132,16 @@
         while(n){
           const isEl = n.nodeType === 1;
 
-          // 情況 A：遇到未包裝的標題（H2~H6）
           if (isEl && isHeadingEl(n)) {
             const lv = levelOf(n);
-            if (lv <= curLv) break;       // 下一個同級或更高級：章節結束
+            if (lv <= curLv) break;
             if (lv > curLv) hasChildHeading = true;
           }
-
-          // 情況 B：遇到已包裝的 .section，取其首個子元素判斷層級
           if (isEl && n.classList.contains('section')) {
             const first = n.firstElementChild;
             if (first && isHeadingEl(first)) {
               const lv = levelOf(first);
-              if (lv <= curLv) break;     // 下一個同級或更高級（被包裝過）：章節結束
+              if (lv <= curLv) break;
               if (lv > curLv) hasChildHeading = true;
             }
           }
@@ -149,15 +151,15 @@
           n = next;
         }
 
+        // 建立容器並設定深度（提供給 CSS 計算縮排與直線）
+        const wrap = document.createElement('div');
+        wrap.className = 'section';
+        wrap.style.setProperty('--depth', depth);
+        if (depth > 0) wrap.classList.add('has-gutter'); // 深度>0 才畫直線
+        h.parentNode.insertBefore(wrap, h);
+        wrap.appendChild(h);
+
         if(hasChildHeading){
-          const wrap = document.createElement('div');
-          wrap.className = 'section';
-          // 設定縮排深度（提供給 CSS 使用）
-          wrap.style.setProperty('--depth', depth);
-
-          h.parentNode.insertBefore(wrap, h);
-          wrap.appendChild(h);
-
           const body = document.createElement('div');
           body.className = 'section-body';
           body.appendChild(bodyFrag);
@@ -172,22 +174,12 @@
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
           btn.addEventListener('click', ()=>{
-            const isNowCollapsed = !body.classList.contains('collapsed'); // 點擊前狀態相反
+            const isNowCollapsed = !body.classList.contains('collapsed');
             body.classList.toggle('collapsed');
             setToggleVisual(btn, !isNowCollapsed);
             saveState(key, body.classList.contains('collapsed'));
           });
-
-          // 把按鈕插到標題最前面（左側）
           h.insertBefore(btn, h.firstChild);
-        } else {
-          // 即使沒有子項目，也把縮排深度套上，讓同層對齊更一致（可選）
-          // 如果你只想縮排「可收合的節點」，可以移除此分支
-          const wrap = document.createElement('div');
-          wrap.className = 'section';
-          wrap.style.setProperty('--depth', depth);
-          h.parentNode.insertBefore(wrap, h);
-          wrap.appendChild(h);
         }
       }
     }
@@ -197,10 +189,7 @@
       btn.setAttribute('aria-expanded', String(!collapsed));
       btn.title = collapsed ? '展開' : '收合';
     }
-
-    function isHeadingEl(el){
-      return !!el && el.tagName && /^H[2-6]$/.test(el.tagName);
-    }
+    function isHeadingEl(el){ return !!el && el.tagName && /^H[2-6]$/.test(el.tagName); }
     function levelOf(hEl){ return parseInt(hEl.tagName.slice(1),10); }
     function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
@@ -234,9 +223,7 @@
     }
 
     function showError(msg){
-      const root = document.getElementById('mdRoot');
-      root.innerHTML = '<pre style="white-space:pre-wrap;background:#0001;padding:12px;border-radius:8px">'
-        + msg + '</pre>';
+      root.innerHTML = '<pre style="white-space:pre-wrap;background:#0001;padding:12px;border-radius:8px">'+msg+'</pre>';
     }
   })();
   </script>
