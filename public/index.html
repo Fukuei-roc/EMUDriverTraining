@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EMUDriverTraining — Markdown Viewer</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --bg:#0b0c0f; --panel:#11131a; --fg:#e7eaf3; --muted:#9aa3b2; --line:#262b36; --accent:#7aa2ff;
+      --radius:14px; --maxw:980px;
+    }
+    html,body{height:100%}
+    body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 60px}
+    .hdr{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+    .brand{font-weight:700}.muted{color:var(--muted);font-size:14px}
+    .card{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden}
+    @media(prefers-color-scheme:dark){body{background:linear-gradient(180deg,var(--bg),#0f131d);color:var(--fg)}.card{background:var(--panel);border-color:var(--line)}}
+    .titlebar{padding:14px 18px;border-bottom:1px solid #eceff6;display:flex;gap:10px;align-items:center}
+    .titlebar h1{margin:0;font-size:22px}.titlebar .meta{margin-left:auto;font-size:13px;color:var(--muted)}
+    .content{padding:18px}
+    .md-root h1{font-size:28px;margin:12px 0 14px}
+    .md-root h2{font-size:22px;margin:26px 0 10px;padding-top:6px;border-top:1px solid #0002}
+    .md-root p{margin:10px 0}
+    .md-root img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
+    pre{background:#0001;padding:12px;border-radius:8px}
+
+    /* --- Roam 風章節折疊樣式 --- */
+    .section { position: relative; }
+    .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .section-toggle {
+      border: 1px solid #d0d4e0;
+      background: #f6f7fb;
+      padding: 0 .5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 20px;
+      user-select: none;
+    }
+    @media (prefers-color-scheme: dark){
+      .section-toggle { background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
+    }
+    .section-body.collapsed { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hdr">
+      <div class="brand">EMUDriverTraining</div>
+      <div class="muted">Markdown Viewer（基礎版）</div>
+    </header>
+
+    <article class="card">
+      <div class="titlebar">
+        <h1 id="docTitle">Loading…</h1>
+        <div class="meta" id="docMeta">—</div>
+      </div>
+      <div class="content">
+        <div class="md-root" id="mdRoot"></div>
+      </div>
+    </article>
+  </div>
+
+  <!-- 使用本地 markdown-it -->
+  <script src="/lib/markdown-it.min.js"></script>
+  <script>
+  (function(){
+    const MD_SRC  = '/content/index.md';
+    const root    = document.getElementById('mdRoot');
+    const titleEl = document.getElementById('docTitle');
+    const metaEl  = document.getElementById('docMeta');
+
+    window.addEventListener('DOMContentLoaded', init);
+
+    async function init(){
+      if(typeof window.markdownit !== 'function'){
+        return showError('找不到 markdown-it（/lib/markdown-it.min.js）。');
+      }
+      const md = window.markdownit({ html:false, linkify:true, typographer:true });
+
+      try{
+        const res = await fetch(MD_SRC, { cache:'no-store' });
+        if(!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText);
+        const text = await res.text();
+        const {meta, body} = parseFrontmatter(text);
+
+        // 套用標題/更新時間
+        titleEl.textContent = meta.title || 'Document';
+        metaEl.textContent  = meta.updated ? ('Updated: ' + meta.updated) : '';
+
+        // 渲染 Markdown
+        root.innerHTML = md.render(body);
+
+        // 對「設備介紹」章節做 Roam 風折疊（H2）
+        makeHeadingCollapsible({
+          container: root,
+          headingLevel: 2,                  // H2
+          headingText: '設備介紹',           // 章節名稱
+          defaultCollapsed: true,           // 預設收合
+          stateKey: 'fold:設備介紹'          // localStorage key
+        });
+      }catch(err){
+        showError('載入 Markdown 失敗：' + String(err));
+        console.error(err);
+      }
+    }
+
+    /* ---------- Roam 風折疊核心 ---------- */
+    function makeHeadingCollapsible({container, headingLevel=2, headingText, defaultCollapsed=false, stateKey}){
+      const tag   = 'H' + headingLevel;
+      const heads = Array.from(container.querySelectorAll(tag));
+      if(!heads.length) return;
+
+      const norm = s => (s||'').replace(/\s+/g,'').trim();
+      const target = heads.find(h => norm(h.textContent) === norm(headingText));
+      if(!target) return;
+
+      // 包裝：.section（含 .section-body）
+      const wrap = document.createElement('div');
+      wrap.className = 'section';
+      target.parentNode.insertBefore(wrap, target);
+      wrap.appendChild(target);
+
+      const body = document.createElement('div');
+      body.className = 'section-body';
+
+      // 收集直到下一個同級 Hn 前的所有兄弟節點
+      let n = wrap.nextSibling;
+      while(n){
+        const isEl = n.nodeType === 1;
+        const isNextSameLevelHeading = isEl && n.tagName === tag;
+        if(isNextSameLevelHeading) break;
+        const next = n.nextSibling;
+        body.appendChild(n);
+        n = next;
+      }
+      wrap.appendChild(body);
+
+      // 建立切換按鈕與狀態
+      const btn = document.createElement('button');
+      btn.className = 'section-toggle';
+      const KEY = stateKey || ('fold:'+ headingText);
+      const saved = loadState(KEY);
+      const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
+      if(startCollapsed) body.classList.add('collapsed');
+      btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+      btn.addEventListener('click', ()=>{
+        body.classList.toggle('collapsed');
+        btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+        saveState(KEY, body.classList.contains('collapsed'));
+      });
+
+      // 將按鈕放到標題右側
+      target.appendChild(btn);
+    }
+
+    /* ---------- Frontmatter 解析 ---------- */
+    function parseFrontmatter(src){
+      if(src.charCodeAt(0) === 0xFEFF) src = src.slice(1);
+      const m = src.match(/^---\s*[\r\n]([\s\S]*?)\r?\n---\s*[\r\n]([\s\S]*)$/);
+      if(m) return { meta: yamlToJSON(m[1]), body: m[2] };
+      return { meta:{}, body: src };
+    }
+    function yamlToJSON(yaml){
+      const out = {};
+      yaml.split(/\r?\n/).forEach(line=>{
+        if(!line.trim() || line.trim().startsWith('#')) return;
+        const i = line.indexOf(':'); if(i<1) return;
+        const k = line.slice(0,i).trim();
+        let v = line.slice(i+1).trim();
+        if((v.startsWith('"') && v.endsWith('"'))||(v.startsWith("'") && v.endsWith("'"))) v=v.slice(1,-1);
+        out[k]=v;
+      });
+      return out;
+    }
+
+    /* ---------- 狀態保存 ---------- */
+    function saveState(key, val){ try{ localStorage.setItem(key, JSON.stringify(!!val)); }catch(e){} }
+    function loadState(key){
+      try{
+        const v = localStorage.getItem(key);
+        return v==null ? null : JSON.parse(v);
+      }catch(e){ return null; }
+    }
+
+    function showError(msg){
+      root.innerHTML = '<pre style="white-space:pre-wrap;background:#0001;padding:12px;border-radius:8px">'
+        + msg + '</pre>';
+    }
+  })();
+  </script>
+</body>
+</html>
