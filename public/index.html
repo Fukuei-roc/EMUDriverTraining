@@ -10,8 +10,9 @@
       --bg:#0b0c0f; --panel:#11131a; --fg:#e7eaf3; --muted:#9aa3b2; --line:#262b36; --accent:#7aa2ff;
       --radius:14px; --maxw:980px;
       --indent-step: 2.5rem; /* 每層縮排寬度 */
-      --gutter-alpha: .5;    /* 直線透明度，可調 */
-      --gutter-width: 4px;    /* 直線粗細 */
+      --gutter-alpha: .8;    /* 直線透明度 */
+      --gutter-width: 3px;    /* 直線粗細 */
+      --bullet-size: 6px;     /* 實心點大小 */
     }
     html,body{height:100%}
     body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
@@ -36,20 +37,42 @@
       position: relative;
       margin-left: calc(var(--depth, 0) * var(--indent-step)); /* 依層級縮排 */
     }
-    /* 直線：H3 起會看到（depth>0 時 JS 會加 .has-gutter） */
+    /* 直線：深度>0 才畫（與 Roam 類似） */
     .section.has-gutter::before{
       content:"";
       position:absolute;
-      left: calc(-0.5 * var(--indent-step)); /* 線放在縮排槽正中間 */
+      left: calc(-0.5 * var(--indent-step)); /* 線在縮排槽中央 */
       top: 0; bottom: 0;
       width: var(--gutter-width);
       background: color-mix(in oklab, var(--line) 100%, transparent calc(100% - 100%));
       opacity: var(--gutter-alpha);
     }
-    /* 讓標題與按鈕橫向排列；按鈕在文字左側 */
+    /* 標題列：按鈕在左、文字在右 */
     .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
+      position: relative;
       display:flex; align-items:center; gap:.5rem;
+      min-height: 1.6em; /* 讓圓點置中更穩定 */
     }
+    /* ✅ 實心點：每層都有，與 gutter 對齊；不影響版面寬度 */
+    .section > h2::after,
+    .section > h3::after,
+    .section > h4::after,
+    .section > h5::after,
+    .section > h6::after{
+      content:"";
+      position:absolute;
+      left: calc(-0.5 * var(--indent-step)); /* 與直線同一條垂直線 */
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: var(--bullet-size);
+      height: var(--bullet-size);
+      border-radius: 50%;
+      background: currentColor;   /* 跟隨文字色 */
+      /* 為了在深色/淺色主題上對比更好，加一圈淡淡的外框 */
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--panel) 70%, transparent);
+      pointer-events: none; /* 不擋到點擊 */
+    }
+
     .section-toggle{
       border:1px solid #d0d4e0;
       background:#f6f7fb;
@@ -60,7 +83,8 @@
       user-select:none;
       display:inline-flex; align-items:center; justify-content:center;
       min-width:2ch;
-      margin-right:.25rem;
+      margin-right:.25rem; /* 和文字保持一點距離 */
+      flex: 0 0 auto;      /* 不要被擠壓 */
     }
     @media (prefers-color-scheme: dark){
       .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
@@ -114,7 +138,7 @@
       }
     }
 
-    /* ---------- 自動折疊 + 設定縮排深度 + 加直線 gutter ---------- */
+    /* ---------- 自動折疊 + 設定縮排深度 + 直線 gutter ---------- */
     function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
       const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
       const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
@@ -151,7 +175,7 @@
           n = next;
         }
 
-        // 建立容器並設定深度（提供給 CSS 計算縮排與直線）
+        // 建立容器並設定深度
         const wrap = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
@@ -179,6 +203,7 @@
             setToggleVisual(btn, !isNowCollapsed);
             saveState(key, body.classList.contains('collapsed'));
           });
+          // 按鈕在文字左側（不與 bullet 對齊，bullet 是絕對定位）
           h.insertBefore(btn, h.firstChild);
         }
       }
