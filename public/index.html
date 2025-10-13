@@ -36,12 +36,15 @@
     .section-toggle {
       border: 1px solid #d0d4e0;
       background: #f6f7fb;
-      padding: 0 .5rem;
+      padding: 0 .45rem;
       border-radius: 6px;
       cursor: pointer;
       font-size: 12px;
       line-height: 20px;
       user-select: none;
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width: 2ch;  /* 保持寬度一致，避免跳動 */
+      margin-right: .25rem; /* 在文字左側留間距 */
     }
     @media (prefers-color-scheme: dark){
       .section-toggle { background:#1a1f2b; border-color:#2a2f3d; color:#e7eaf3; }
@@ -91,8 +94,8 @@
         // 渲染 Markdown 正文
         root.innerHTML = md.render(body);
 
-        // 自動為具有子標題的章節加上收合按鈕（H2~H5）
-        autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:false });
+        // 自動為具有子標題的章節加上收合按鈕（H2~H5），並預設全部收合
+        autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
         console.error(err);
@@ -158,16 +161,25 @@
 
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
-          btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+          // 預設為全部收合：左側顯示 ▶，展開後顯示 ▼
+          setToggleVisual(btn, body.classList.contains('collapsed'));
           btn.addEventListener('click', ()=>{
+            const isNowCollapsed = !body.classList.contains('collapsed'); // 點擊前狀態相反
             body.classList.toggle('collapsed');
-            btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+            setToggleVisual(btn, !isNowCollapsed);
             saveState(key, body.classList.contains('collapsed'));
           });
 
-          h.appendChild(btn);
+          // ⬅️ 將按鈕插入到標題最前面（在文字左側）
+          h.insertBefore(btn, h.firstChild);
         }
       }
+    }
+
+    function setToggleVisual(btn, collapsed){
+      btn.textContent = collapsed ? '▶' : '▼';
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      btn.title = collapsed ? '展開' : '收合';
     }
 
     function isHeadingEl(el){
