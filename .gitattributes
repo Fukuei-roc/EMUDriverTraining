@@ -10,4 +10,6 @@
 *.jpg binary
 *.gif binary
 *.pdf binary
-*.min.js binary  # 若你不想讓壓縮後的 js 被改行尾，可視需要加這行
+
+# 若你不想讓壓縮後的 js 被改行尾，可視需要加這行
+*.min.js binary
