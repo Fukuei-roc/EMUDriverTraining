@@ -13,12 +13,16 @@
     html,body{height:100%}
     body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
     .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 60px}
-    .hdr{display:flex;gap:12px;align-items:center;margin-bottom:14px}
-    .brand{font-weight:700}.muted{color:var(--muted);font-size:14px}
+
+    /* 原本的頁首（品牌/副標）— 需求：不顯示 */
+    .hdr{display:none}
+
     .card{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden}
     @media(prefers-color-scheme:dark){body{background:linear-gradient(180deg,var(--bg),#0f131d);color:var(--fg)}.card{background:var(--panel);border-color:var(--line)}}
-    .titlebar{padding:14px 18px;border-bottom:1px solid #eceff6;display:flex;gap:10px;align-items:center}
-    .titlebar h1{margin:0;font-size:22px}.titlebar .meta{margin-left:auto;font-size:13px;color:var(--muted)}
+
+    /* 標題列（docTitle + docMeta）— 需求：不顯示 */
+    .titlebar{display:none}
+
     .content{padding:18px}
     .md-root h1{font-size:28px;margin:12px 0 14px}
     .md-root h2{font-size:22px;margin:26px 0 10px;padding-top:6px;border-top:1px solid #0002}
@@ -49,12 +53,14 @@
 </head>
 <body>
   <div class="wrap">
+    <!-- 原本的頁首整段已隱藏 .hdr，不移除以保留結構需要時可再開 -->
     <header class="hdr">
       <div class="brand">EMUDriverTraining</div>
       <div class="muted">Markdown Viewer（基礎版）</div>
     </header>
 
     <article class="card">
+      <!-- 標題列（docTitle + docMeta）已隱藏 .titlebar -->
       <div class="titlebar">
         <h1 id="docTitle">Loading…</h1>
         <div class="meta" id="docMeta">—</div>
@@ -71,6 +77,7 @@
   (function(){
     const MD_SRC  = '/content/index.md';
     const root    = document.getElementById('mdRoot');
+    // 即使不顯示，仍保留查找避免報錯（不再寫入文字）
     const titleEl = document.getElementById('docTitle');
     const metaEl  = document.getElementById('docMeta');
 
@@ -86,13 +93,13 @@
         const res = await fetch(MD_SRC, { cache:'no-store' });
         if(!res.ok) throw new Error('HTTP '+res.status+' '+res.statusText);
         const text = await res.text();
-        const {meta, body} = parseFrontmatter(text);
+        const { /* meta, */ body } = parseFrontmatter(text);
 
-        // 套用標題/更新時間
-        titleEl.textContent = meta.title || 'Document';
-        metaEl.textContent  = meta.updated ? ('Updated: ' + meta.updated) : '';
+        // 不再寫入 docTitle / docMeta（避免在 DOM 中顯示）
+        // titleEl.textContent = meta.title || 'Document';
+        // metaEl.textContent  = meta.updated ? ('Updated: ' + meta.updated) : '';
 
-        // 渲染 Markdown
+        // 渲染 Markdown 正文
         root.innerHTML = md.render(body);
 
         // 對「設備介紹」章節做 Roam 風折疊（H2）
@@ -188,6 +195,7 @@
     }
 
     function showError(msg){
+      const root = document.getElementById('mdRoot');
       root.innerHTML = '<pre style="white-space:pre-wrap;background:#0001;padding:12px;border-radius:8px">'
         + msg + '</pre>';
     }
