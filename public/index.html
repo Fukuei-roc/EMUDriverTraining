@@ -9,6 +9,7 @@
     :root{
       --bg:#0b0c0f; --panel:#11131a; --fg:#e7eaf3; --muted:#9aa3b2; --line:#262b36; --accent:#7aa2ff;
       --radius:14px; --maxw:980px;
+      --indent-step: 5rem; /* 縮排一格距離：可自行調整 */
     }
     html,body{height:100%}
     body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
@@ -28,8 +29,12 @@
     .md-root img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
     pre{background:#0001;padding:12px;border-radius:8px}
 
-    /* --- Roam 風章節折疊樣式 --- */
-    .section { position: relative; }
+    /* --- Roam 風章節折疊樣式 + 依層級縮排 --- */
+    .section {
+      position: relative;
+      /* 依深度縮排；深度由 JS 設定 --depth 變數 */
+      margin-left: calc(var(--depth, 0) * var(--indent-step));
+    }
     .section > h2, .section > h3, .section > h4, .section > h5, .section > h6 {
       display: flex; align-items: center; gap: .5rem;
     }
@@ -102,7 +107,7 @@
       }
     }
 
-    /* ---------- 自動折疊：對 H2~H5 中有子項目的章節加按鈕 ---------- */
+    /* ---------- 自動折疊：對 H2~H5 中有子項目的章節加按鈕 + 設定縮排深度 ---------- */
     function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
       // 一次擷取所有 H2~H6，再倒序處理，避免包裝影響後續節點定位
       const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
@@ -114,6 +119,7 @@
         if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
         const curLv = levelOf(h);
+        const depth = Math.max(0, curLv - minLevel); // H2=0, H3=1, H4=2...
         const bodyFrag = document.createDocumentFragment();
         let n = h.nextSibling;
         let hasChildHeading = false;
@@ -146,6 +152,9 @@
         if(hasChildHeading){
           const wrap = document.createElement('div');
           wrap.className = 'section';
+          // 設定縮排深度（提供給 CSS 使用）
+          wrap.style.setProperty('--depth', depth);
+
           h.parentNode.insertBefore(wrap, h);
           wrap.appendChild(h);
 
@@ -161,7 +170,6 @@
 
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
-          // 預設為全部收合：左側顯示 ▶，展開後顯示 ▼
           setToggleVisual(btn, body.classList.contains('collapsed'));
           btn.addEventListener('click', ()=>{
             const isNowCollapsed = !body.classList.contains('collapsed'); // 點擊前狀態相反
@@ -170,8 +178,16 @@
             saveState(key, body.classList.contains('collapsed'));
           });
 
-          // ⬅️ 將按鈕插入到標題最前面（在文字左側）
+          // 把按鈕插到標題最前面（左側）
           h.insertBefore(btn, h.firstChild);
+        } else {
+          // 即使沒有子項目，也把縮排深度套上，讓同層對齊更一致（可選）
+          // 如果你只想縮排「可收合的節點」，可以移除此分支
+          const wrap = document.createElement('div');
+          wrap.className = 'section';
+          wrap.style.setProperty('--depth', depth);
+          h.parentNode.insertBefore(wrap, h);
+          wrap.appendChild(h);
         }
       }
     }
