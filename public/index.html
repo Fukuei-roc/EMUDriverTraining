@@ -14,18 +14,16 @@
     body{margin:0;font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif}
     .wrap{max-width:var(--maxw);margin:0 auto;padding:20px 16px 60px}
 
-    /* 原本的頁首（品牌/副標）— 需求：不顯示 */
+    /* 隱藏頁首品牌/副標與標題列（依你的需求） */
     .hdr{display:none}
-
     .card{background:#fff;border:1px solid #e6e8ef;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.06);overflow:hidden}
     @media(prefers-color-scheme:dark){body{background:linear-gradient(180deg,var(--bg),#0f131d);color:var(--fg)}.card{background:var(--panel);border-color:var(--line)}}
-
-    /* 標題列（docTitle + docMeta）— 需求：不顯示 */
     .titlebar{display:none}
 
     .content{padding:18px}
     .md-root h1{font-size:28px;margin:12px 0 14px}
     .md-root h2{font-size:22px;margin:26px 0 10px;padding-top:6px;border-top:1px solid #0002}
+    .md-root h3{font-size:18px;margin:18px 0 8px}
     .md-root p{margin:10px 0}
     .md-root img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
     pre{background:#0001;padding:12px;border-radius:8px}
@@ -53,14 +51,12 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- 原本的頁首整段已隱藏 .hdr，不移除以保留結構需要時可再開 -->
     <header class="hdr">
       <div class="brand">EMUDriverTraining</div>
       <div class="muted">Markdown Viewer（基礎版）</div>
     </header>
 
     <article class="card">
-      <!-- 標題列（docTitle + docMeta）已隱藏 .titlebar -->
       <div class="titlebar">
         <h1 id="docTitle">Loading…</h1>
         <div class="meta" id="docMeta">—</div>
@@ -77,9 +73,6 @@
   (function(){
     const MD_SRC  = '/content/index.md';
     const root    = document.getElementById('mdRoot');
-    // 即使不顯示，仍保留查找避免報錯（不再寫入文字）
-    const titleEl = document.getElementById('docTitle');
-    const metaEl  = document.getElementById('docMeta');
 
     window.addEventListener('DOMContentLoaded', init);
 
@@ -95,75 +88,93 @@
         const text = await res.text();
         const { /* meta, */ body } = parseFrontmatter(text);
 
-        // 不再寫入 docTitle / docMeta（避免在 DOM 中顯示）
-        // titleEl.textContent = meta.title || 'Document';
-        // metaEl.textContent  = meta.updated ? ('Updated: ' + meta.updated) : '';
-
         // 渲染 Markdown 正文
         root.innerHTML = md.render(body);
 
-        // 對「設備介紹」章節做 Roam 風折疊（H2）
-        makeHeadingCollapsible({
-          container: root,
-          headingLevel: 2,                  // H2
-          headingText: '設備介紹',           // 章節名稱
-          defaultCollapsed: true,           // 預設收合
-          stateKey: 'fold:設備介紹'          // localStorage key
-        });
+        // 自動為具有子標題的章節加上收合按鈕（H2~H5）
+        autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:false });
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
         console.error(err);
       }
     }
 
-    /* ---------- Roam 風折疊核心 ---------- */
-    function makeHeadingCollapsible({container, headingLevel=2, headingText, defaultCollapsed=false, stateKey}){
-      const tag   = 'H' + headingLevel;
-      const heads = Array.from(container.querySelectorAll(tag));
-      if(!heads.length) return;
+    /* ---------- 自動折疊：對 H2~H5 中有子項目的章節加按鈕 ---------- */
+    function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
+      // 一次擷取所有 H2~H6，再倒序處理，避免包裝影響後續節點定位
+      const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
+      const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
 
-      const norm = s => (s||'').replace(/\s+/g,'').trim();
-      const target = heads.find(h => norm(h.textContent) === norm(headingText));
-      if(!target) return;
+      for(let i = headings.length - 1; i >= 0; i--){
+        const h = headings[i];
+        // 若此標題已經被包在 .section 裡，表示先前已處理過，略過
+        if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
-      // 包裝：.section（含 .section-body）
-      const wrap = document.createElement('div');
-      wrap.className = 'section';
-      target.parentNode.insertBefore(wrap, target);
-      wrap.appendChild(target);
+        const curLv = levelOf(h);
+        const bodyFrag = document.createDocumentFragment();
+        let n = h.nextSibling;
+        let hasChildHeading = false;
 
-      const body = document.createElement('div');
-      body.className = 'section-body';
+        while(n){
+          const isEl = n.nodeType === 1;
 
-      // 收集直到下一個同級 Hn 前的所有兄弟節點
-      let n = wrap.nextSibling;
-      while(n){
-        const isEl = n.nodeType === 1;
-        const isNextSameLevelHeading = isEl && n.tagName === tag;
-        if(isNextSameLevelHeading) break;
-        const next = n.nextSibling;
-        body.appendChild(n);
-        n = next;
+          // 情況 A：遇到未包裝的標題（H2~H6）
+          if (isEl && isHeadingEl(n)) {
+            const lv = levelOf(n);
+            if (lv <= curLv) break;       // 下一個同級或更高級：章節結束
+            if (lv > curLv) hasChildHeading = true;
+          }
+
+          // 情況 B：遇到已包裝的 .section，取其首個子元素判斷層級
+          if (isEl && n.classList.contains('section')) {
+            const first = n.firstElementChild;
+            if (first && isHeadingEl(first)) {
+              const lv = levelOf(first);
+              if (lv <= curLv) break;     // 下一個同級或更高級（被包裝過）：章節結束
+              if (lv > curLv) hasChildHeading = true;
+            }
+          }
+
+          const next = n.nextSibling;
+          bodyFrag.appendChild(n);
+          n = next;
+        }
+
+        if(hasChildHeading){
+          const wrap = document.createElement('div');
+          wrap.className = 'section';
+          h.parentNode.insertBefore(wrap, h);
+          wrap.appendChild(h);
+
+          const body = document.createElement('div');
+          body.className = 'section-body';
+          body.appendChild(bodyFrag);
+          wrap.appendChild(body);
+
+          const key = 'fold:' + curLv + ':' + normalizeText(h.textContent);
+          const saved = loadState(key);
+          const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
+          if(startCollapsed) body.classList.add('collapsed');
+
+          const btn = document.createElement('button');
+          btn.className = 'section-toggle';
+          btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+          btn.addEventListener('click', ()=>{
+            body.classList.toggle('collapsed');
+            btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
+            saveState(key, body.classList.contains('collapsed'));
+          });
+
+          h.appendChild(btn);
+        }
       }
-      wrap.appendChild(body);
-
-      // 建立切換按鈕與狀態
-      const btn = document.createElement('button');
-      btn.className = 'section-toggle';
-      const KEY = stateKey || ('fold:'+ headingText);
-      const saved = loadState(KEY);
-      const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
-      if(startCollapsed) body.classList.add('collapsed');
-      btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
-      btn.addEventListener('click', ()=>{
-        body.classList.toggle('collapsed');
-        btn.textContent = body.classList.contains('collapsed') ? '▶ 展開' : '▼ 收合';
-        saveState(KEY, body.classList.contains('collapsed'));
-      });
-
-      // 將按鈕放到標題右側
-      target.appendChild(btn);
     }
+
+    function isHeadingEl(el){
+      return !!el && el.tagName && /^H[2-6]$/.test(el.tagName);
+    }
+    function levelOf(hEl){ return parseInt(hEl.tagName.slice(1),10); }
+    function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
     /* ---------- Frontmatter 解析 ---------- */
     function parseFrontmatter(src){
