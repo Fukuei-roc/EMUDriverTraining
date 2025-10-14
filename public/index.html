@@ -14,11 +14,33 @@
       max-width:100%;
       height:auto;
       border-radius:8px;
+      cursor: zoom-in; /* 可點擊放大 */
     }
     /* 圖片在清單內的間距更好看 */
     .section-body li img{ margin-top:.25rem; }
     /* 讓清單項目的標記在外側，避免與樹狀圓點打架 */
     .section-body ul{ list-style-position: outside; padding-left: 1.25rem; }
+
+    /* ===== 圖片全螢幕（overlay） ===== */
+    .img-overlay{
+      position: fixed;
+      inset: 0;
+      display: none;            /* 以 open class 控制顯示 */
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.75);
+      z-index: 1000;
+      cursor: zoom-out;         /* 再點一次縮回 */
+    }
+    .img-overlay.open{ display: flex; }
+    .img-overlay__img{
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;      /* 維持比例 */
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      background: #000;         /* 照片透明邊時更好看 */
+    }
   </style>
 </head>
 <body>
@@ -38,6 +60,11 @@
         <div class="md-root" id="mdRoot"></div>
       </div>
     </article>
+  </div>
+
+  <!-- 放大用的 overlay（預先放在 DOM，透過 class 切換） -->
+  <div class="img-overlay" id="imgOverlay" aria-hidden="true">
+    <img class="img-overlay__img" id="imgOverlayImg" alt="">
   </div>
 
   <script src="/lib/markdown-it.min.js"></script>
@@ -63,26 +90,26 @@
         // 渲染 Markdown
         root.innerHTML = md.render(body);
 
-        // ✅ 重要：修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
+        // 修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
         rewriteRelativeImages(root);
 
-        // 自動為具有子標題的章節加上收合按鈕（H2~H5），預設全部收合
+        // 自動折疊（H2~H5），預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
+
+        // 啟用圖片點擊放大/還原
+        enableImageFullscreen(root);
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
         console.error(err);
       }
     }
 
-    /* ---------- 將 ./images/* 或 images/* 改寫到 /content/images/* ---------- */
+    /* 將 ./images/* 或 images/* 改寫到 /content/images/* */
     function rewriteRelativeImages(container){
       const imgs = container.querySelectorAll('img');
       imgs.forEach(img=>{
         const src = img.getAttribute('src') || '';
-        // 已是 /content/* 就不動
         if (/^\/content\//i.test(src)) return;
-
-        // ./images/... 或 images/... 轉為 /content/images/...
         if (/^\.?\/?images\//i.test(src)) {
           const clean = src.replace(/^\.\//, '').replace(/^\/?images\//i, 'images/');
           img.setAttribute('src', '/content/' + clean);
@@ -90,7 +117,44 @@
       });
     }
 
-    /* ---------- 自動折疊 + 設定縮排深度 + 直線 gutter ---------- */
+    /* 圖片全螢幕切換 */
+    function enableImageFullscreen(container){
+      const overlay   = document.getElementById('imgOverlay');
+      const overlayImg= document.getElementById('imgOverlayImg');
+
+      function openOverlay(img){
+        overlayImg.src = img.currentSrc || img.src;
+        overlayImg.alt = img.alt || '';
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden'; // 防捲動
+      }
+      function closeOverlay(){
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlayImg.src = '';
+        document.body.style.overflow = '';
+      }
+
+      // 點擊任何內容區的圖片 => 放大
+      container.addEventListener('click', (e)=>{
+        const img = e.target.closest('img');
+        if(!img) return;
+        openOverlay(img);
+      });
+
+      // 點 overlay 任意處 => 關閉
+      overlay.addEventListener('click', closeOverlay);
+
+      // 按 ESC 也可關閉
+      window.addEventListener('keydown', (e)=>{
+        if(e.key === 'Escape' && overlay.classList.contains('open')){
+          closeOverlay();
+        }
+      });
+    }
+
+    /* 自動折疊 + 設定縮排深度 */
     function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
       const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
       const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
@@ -171,7 +235,7 @@
     function levelOf(hEl){ return parseInt(hEl.tagName.slice(1),10); }
     function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
-    /* ---------- Frontmatter 解析 ---------- */
+    /* Frontmatter 解析 */
     function parseFrontmatter(src){
       if(src.charCodeAt(0) === 0xFEFF) src = src.slice(1);
       const m = src.match(/^---\s*[\r\n]([\s\S]*?)\r?\n---\s*[\r\n]([\s\S]*)$/);
@@ -191,7 +255,7 @@
       return out;
     }
 
-    /* ---------- 狀態保存 ---------- */
+    /* 狀態保存 */
     function saveState(key, val){ try{ localStorage.setItem(key, JSON.stringify(!!val)); }catch(e){} }
     function loadState(key){
       try{
