@@ -53,8 +53,10 @@ $RECYCLE.BIN/
 structure.txt
 
 # --- Project-specific ignores ---
-# 你要求忽略的檔案：
 Prompt.md
 
 # 若改為從 node_modules 提供 markdown-it，可忽略本地拷貝（按需開啟）
 # public/lib/markdown-it.min.js
+
+# 🔹 忽略教材圖片
+public/content/images/

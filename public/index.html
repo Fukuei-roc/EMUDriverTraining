@@ -5,18 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EMUDriverTraining — Markdown Viewer</title>
   <meta name="color-scheme" content="light dark" />
-  <!-- 只載入外部樣式，避免重複子彈 -->
+  <!-- 使用外部樣式（含樹狀縮排、連續直線、圓點與折疊） -->
   <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* 針對圖片再加一點保護，確保不破壞縮排 */
+    .section-body img{
+      display:block;
+      max-width:100%;
+      height:auto;
+      border-radius:8px;
+    }
+    /* 圖片在清單內的間距更好看 */
+    .section-body li img{ margin-top:.25rem; }
+    /* 讓清單項目的標記在外側，避免與樹狀圓點打架 */
+    .section-body ul{ list-style-position: outside; padding-left: 1.25rem; }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="hdr">
+    <!-- 依你的需求持續隱藏頁首與標題列 -->
+    <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
       <div class="muted">Markdown Viewer（基礎版）</div>
     </header>
 
     <article class="card">
-      <div class="titlebar">
+      <div class="titlebar" style="display:none">
         <h1 id="docTitle">Loading…</h1>
         <div class="meta" id="docMeta">—</div>
       </div>
@@ -46,13 +60,34 @@
         const text = await res.text();
         const { body } = parseFrontmatter(text);
 
+        // 渲染 Markdown
         root.innerHTML = md.render(body);
-        // 預設全部收合
+
+        // ✅ 重要：修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
+        rewriteRelativeImages(root);
+
+        // 自動為具有子標題的章節加上收合按鈕（H2~H5），預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
         console.error(err);
       }
+    }
+
+    /* ---------- 將 ./images/* 或 images/* 改寫到 /content/images/* ---------- */
+    function rewriteRelativeImages(container){
+      const imgs = container.querySelectorAll('img');
+      imgs.forEach(img=>{
+        const src = img.getAttribute('src') || '';
+        // 已是 /content/* 就不動
+        if (/^\/content\//i.test(src)) return;
+
+        // ./images/... 或 images/... 轉為 /content/images/...
+        if (/^\.?\/?images\//i.test(src)) {
+          const clean = src.replace(/^\.\//, '').replace(/^\/?images\//i, 'images/');
+          img.setAttribute('src', '/content/' + clean);
+        }
+      });
     }
 
     /* ---------- 自動折疊 + 設定縮排深度 + 直線 gutter ---------- */
@@ -96,11 +131,11 @@
         const wrap = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
-        if (depth > 0) wrap.classList.add('has-gutter');
         h.parentNode.insertBefore(wrap, h);
         wrap.appendChild(h);
 
-        if(hasChildHeading){
+        // 內容區
+        if(hasChildHeading || bodyFrag.childNodes.length){
           const body = document.createElement('div');
           body.className = 'section-body';
           body.appendChild(bodyFrag);
@@ -111,6 +146,7 @@
           const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
           if(startCollapsed) body.classList.add('collapsed');
 
+          // 折疊按鈕
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
@@ -120,6 +156,7 @@
             setToggleVisual(btn, !isNowCollapsed);
             saveState(key, body.classList.contains('collapsed'));
           });
+          // 放在標題最前面
           h.insertBefore(btn, h.firstChild);
         }
       }
@@ -154,6 +191,7 @@
       return out;
     }
 
+    /* ---------- 狀態保存 ---------- */
     function saveState(key, val){ try{ localStorage.setItem(key, JSON.stringify(!!val)); }catch(e){} }
     function loadState(key){
       try{
