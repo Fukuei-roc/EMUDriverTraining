@@ -422,10 +422,11 @@
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
           btn.addEventListener('click', ()=>{
-            const isNowCollapsed = !body.classList.contains('collapsed');
-            body.classList.toggle('collapsed');
-            setToggleVisual(btn, !isNowCollapsed);
-            saveState(key, body.classList.contains('collapsed'));
+            // ✅ 修正：以「下一個狀態」為準，避免圖示與實際不一致
+            const nextCollapsed = !body.classList.contains('collapsed');
+            body.classList.toggle('collapsed', nextCollapsed);
+            setToggleVisual(btn, nextCollapsed);
+            saveState(key, nextCollapsed);
           });
           // 放在標題最前面
           h.insertBefore(btn, h.firstChild);
