@@ -11,6 +11,11 @@
     :root{
       /* 清單縮排寬度（供 CSS 與 JS 一致使用） */
       --list-indent: 1.25rem;
+
+      /* 由 JS 動態寫入，讓清單可套用與 h3~h6 一致的字級 */
+      --h-sub-font-size: 18px;
+      --h-sub-line-height: 1.65;
+      --h-sub-font-weight: 600;
     }
 
     /* 針對圖片再加一點保護，確保不破壞縮排 */
@@ -41,6 +46,13 @@
       list-style: none;
       padding-left: 0;
       margin-left: calc(-1 * var(--list-indent));
+    }
+
+    /* 讓「文字型清單」字級 = h3~h6（不影響圖片-only清單） */
+    .section-body li.li-as-heading{
+      font-size: var(--h-sub-font-size);
+      line-height: var(--h-sub-line-height);
+      font-weight: var(--h-sub-font-weight);
     }
 
     /* ===== 圖片全螢幕（overlay） ===== */
@@ -86,7 +98,7 @@
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
 
-    /* ✅ 當此層（或同層整體規則判定）不要畫直線時 */
+    /* ✅ 依規則不畫直線時 */
     .section.no-rail::before{ display:none; }
   </style>
 </head>
@@ -150,6 +162,12 @@
 
         // 統一 h3~h6 的字級為「目前 h2 的字級」
         unifyHeadingSizes(root);
+
+        // 把 h3~h6 的字級抓出來，寫進 CSS 變數，供清單共用
+        captureHeadingTypography(root);
+
+        // ✅ 任何「非圖片-only」的清單，都用和 h3~h6 一樣的字級
+        tagHeadingSizedLis(root);
 
         // 初次更新「是否要畫直線」（含同層聯動規則）
         updateRailVisibility(root);
@@ -218,6 +236,28 @@
       });
     }
 
+    /* 讀取任一個 h3（沒有就取 h2）作為清單字級來源 */
+    function captureHeadingTypography(container){
+      const ref = container.querySelector('h3,h4,h5,h6') || container.querySelector('h2');
+      if(!ref) return;
+      const cs = getComputedStyle(ref);
+      const root = document.documentElement;
+      root.style.setProperty('--h-sub-font-size', cs.fontSize);
+      root.style.setProperty('--h-sub-line-height', cs.lineHeight);
+      root.style.setProperty('--h-sub-font-weight', cs.fontWeight);
+    }
+
+    /* 把所有「非圖片-only」的 li 都視為文字型清單，調整字級為 h3~h6 */
+    function tagHeadingSizedLis(container){
+      const lis = container.querySelectorAll('.section-body li');
+      lis.forEach(li=>{
+        if(li.classList.contains('li-image-only')) return; // 跳過圖片-only
+        // 如果 li 內含子清單或圖片，就視為複合內容，仍可套用字級（若不想套用可在此 return）
+        // 目前需求：凡是以 "-" 開頭生成的 li 都調字級，所以廣泛套用：
+        li.classList.add('li-as-heading');
+      });
+    }
+
     /* ✅ 依「同層級是否有人展開」決定該層所有節點是否顯示左側直線 */
     function updateRailVisibility(container){
       const sections = Array.from(container.querySelectorAll('.section'));
@@ -248,7 +288,6 @@
       // 讀 inline style 的 --depth；若取不到，用 computedStyle 備援
       const inlineVal = sec.style.getPropertyValue('--depth');
       const v = inlineVal || getComputedStyle(sec).getPropertyValue('--depth') || '0';
-      // 可能會有空白或單位，保守用 parseFloat
       const n = parseFloat(v);
       return Number.isFinite(n) ? n : 0;
     }

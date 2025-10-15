@@ -53,6 +53,14 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
 - ![出力查證電路](./images/RUN.jpg)
 ## 故障應急處理
 ### 列車編組
+#### EMU700型：EMC、EP、ET、EM、EM、ET、EP、EMC
+- ![700型列車編組TCMS畫面](./images/20221230_144442.jpg)
+- 有電氣室：EP、ET
+- 馬達車：EMC、EM
+- SIV1位置：ET
+- SIV2位置：ET
+- 主風泵位置：ET
+#### EMU800型：ED、EMA、EP、EMB、EMB、EP、EMA、ED
 ### 開關位置
 ### 110V電瓶供電
 ### 不升弓
