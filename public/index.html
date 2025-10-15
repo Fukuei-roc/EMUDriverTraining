@@ -8,6 +8,11 @@
   <!-- 使用外部樣式（含樹狀縮排、連續直線、圓點與折疊） -->
   <link rel="stylesheet" href="/styles.css">
   <style>
+    :root{
+      /* 清單縮排寬度（供 CSS 與 JS 一致使用） */
+      --list-indent: 1.25rem;
+    }
+
     /* 針對圖片再加一點保護，確保不破壞縮排 */
     .section-body img{
       display:block;
@@ -19,8 +24,25 @@
     }
     /* 圖片在清單內的間距更好看 */
     .section-body li img{ margin-top:.25rem; }
+
     /* 讓清單項目的標記在外側，避免與樹狀圓點打架 */
-    .section-body ul{ list-style-position: outside; padding-left: 1.25rem; }
+    .section-body ul{ list-style-position: outside; padding-left: var(--list-indent); }
+    .section-body ol{ list-style-position: outside; padding-left: var(--list-indent); }
+
+    /* ===== 只包含一張圖片的清單項目：去圓點，並向左回退與標題對齊 ===== */
+    /* 現代瀏覽器（支援 :has）直接套用 */
+    .section-body li:has(> img:only-child),
+    .section-body li:has(> p:only-child > img:only-child){
+      list-style: none;
+      padding-left: 0;
+      margin-left: calc(-1 * var(--list-indent));
+    }
+    /* 舊瀏覽器 fallback：由 JS 加上的類別 */
+    .section-body li.li-image-only{
+      list-style: none;
+      padding-left: 0;
+      margin-left: calc(-1 * var(--list-indent));
+    }
 
     /* ===== 圖片全螢幕（overlay） ===== */
     .img-overlay{
@@ -58,9 +80,7 @@
       max-height: 100%;
       object-fit: contain;      /* 維持比例，scale=1 時填滿 viewport */
       will-change: transform;
-      /* 由 JS 套用 transform: translate() scale() */
       cursor: zoom-in;          /* 預設顯示可放大（在 overlay 內） */
-      /* 拖曳手勢：放大時變為 grab/grabbing（由 JS 切換） */
     }
 
     /* 拖曳中的游標提示（由 JS 切 class） */
@@ -120,6 +140,9 @@
         // 修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
         rewriteRelativeImages(root);
 
+        // 標記「只含一張圖片」的 li（舊瀏覽器 fallback，不支援 :has 時也能套用樣式）
+        markImageOnlyLis(root);
+
         // 自動折疊（H2~H5），預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
 
@@ -147,14 +170,33 @@
       });
     }
 
+    /* 標記只有一張圖片的 li，供舊瀏覽器使用（對齊 :has() 的條件） */
+    function markImageOnlyLis(container){
+      const lis = container.querySelectorAll('li');
+      lis.forEach(li=>{
+        // 過濾純空白文字節點
+        const kids = Array.from(li.childNodes).filter(n => !(n.nodeType===3 && !n.textContent.trim()));
+        let onlyImg = false;
+
+        if(kids.length === 1 && kids[0].nodeType === 1){
+          const el = kids[0];
+          if(el.tagName === 'IMG'){
+            onlyImg = true;
+          }else if(el.tagName === 'P'){
+            const pKids = Array.from(el.childNodes).filter(n => !(n.nodeType===3 && !n.textContent.trim()));
+            if(pKids.length === 1 && pKids[0].nodeType === 1 && pKids[0].tagName === 'IMG'){
+              onlyImg = true;
+            }
+          }
+        }
+        if(onlyImg) li.classList.add('li-image-only');
+      });
+    }
+
     /* 統一 h3~h6 的字級為 h2 的計算樣式（含行高與上下邊距） */
     function unifyHeadingSizes(container){
-      // 先找得到的第一個 h2，讀取其計算樣式
       const probeH2 = container.querySelector('h2');
-      if(!probeH2){
-        // 若頁面沒有 h2，就不用動（避免誤設數值）
-        return;
-      }
+      if(!probeH2){ return; }
       const cs = getComputedStyle(probeH2);
       const fontSize   = cs.fontSize;
       const lineHeight = cs.lineHeight;
@@ -167,7 +209,6 @@
         h.style.lineHeight = lineHeight;
         h.style.marginTop  = marginTop;
         h.style.marginBottom = marginBottom;
-        // 多數設計下 h2 與 h3~h6 粗細一致，這裡也一併對齊
         h.style.fontWeight = fontWeight;
       });
     }
@@ -202,7 +243,6 @@
 
       function calcBaseRect(){
         // 在 scale=1 時，圖片是 "contain" 填滿 viewport，因此直接讀取當前的顯示大小
-        // 這裡需暫時套用 scale=1/tx=0 來量測
         const prev = overlayImg.style.transform;
         overlayImg.style.transform = 'translate(0px, 0px) scale(1)';
         const r = overlayImg.getBoundingClientRect();
@@ -417,12 +457,11 @@
           const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
           if(startCollapsed) body.classList.add('collapsed');
 
-          // 折疊按鈕
+          // 折疊按鈕（已修正狀態與圖示一致）
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
           btn.addEventListener('click', ()=>{
-            // ✅ 修正：以「下一個狀態」為準，避免圖示與實際不一致
             const nextCollapsed = !body.classList.contains('collapsed');
             body.classList.toggle('collapsed', nextCollapsed);
             setToggleVisual(btn, nextCollapsed);
