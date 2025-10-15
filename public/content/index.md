@@ -48,7 +48,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
 - ![出力查證電路](./images/RUN.jpg)
 #### 停留韌機查證電路
 ##### 由尾車韌機控制斷流器(BVN2)→尾車控制繼電器(TCR)→藉由25a號線查證全車PBPSR→到頭車停留軔機繼電器(PAR)
-- ![停留軔機查證電路](./images/hand brake_1.jpg)
+- ![停留軔機查證電路](./images/hand_brake_1.jpg)
 ##### 停留軔機繼電器(PAR)為出力查證電路一環
 - ![出力查證電路](./images/RUN.jpg)
 ## 故障應急處理
