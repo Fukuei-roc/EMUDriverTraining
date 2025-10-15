@@ -123,6 +123,9 @@
         // 自動折疊（H2~H5），預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
 
+        // 統一 h3~h6 的字級為「目前 h2 的字級」
+        unifyHeadingSizes(root);
+
         // 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
         enableImageFullscreen(root);
       }catch(err){
@@ -141,6 +144,31 @@
           const clean = src.replace(/^\.\//, '').replace(/^\/?images\//i, 'images/');
           img.setAttribute('src', '/content/' + clean);
         }
+      });
+    }
+
+    /* 統一 h3~h6 的字級為 h2 的計算樣式（含行高與上下邊距） */
+    function unifyHeadingSizes(container){
+      // 先找得到的第一個 h2，讀取其計算樣式
+      const probeH2 = container.querySelector('h2');
+      if(!probeH2){
+        // 若頁面沒有 h2，就不用動（避免誤設數值）
+        return;
+      }
+      const cs = getComputedStyle(probeH2);
+      const fontSize   = cs.fontSize;
+      const lineHeight = cs.lineHeight;
+      const marginTop  = cs.marginTop;
+      const marginBottom = cs.marginBottom;
+      const fontWeight = cs.fontWeight;
+
+      container.querySelectorAll('h3,h4,h5,h6').forEach(h=>{
+        h.style.fontSize   = fontSize;
+        h.style.lineHeight = lineHeight;
+        h.style.marginTop  = marginTop;
+        h.style.marginBottom = marginBottom;
+        // 多數設計下 h2 與 h3~h6 粗細一致，這裡也一併對齊
+        h.style.fontWeight = fontWeight;
       });
     }
 
@@ -201,26 +229,20 @@
       }
 
       function zoomAt(clientX, clientY, deltaY){
-        // 正值 deltaY → 放大或縮小？瀏覽器中通常 deltaY>0 表示向下捲動 → 我們定義為「縮小」
-        const zoomFactor = Math.exp(-deltaY * 0.002); // 平滑一些
+        // 通常 deltaY>0 = 向下捲動，這裡定義為縮小
+        const zoomFactor = Math.exp(-deltaY * 0.002); // 平滑
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
         if(newScale === scale) return;
 
-        // 以滑鼠位置為中心進行縮放：調整 tx/ty 讓「滑鼠指到的點」在縮放後仍停在同一個畫面位置
-        // 先把滑鼠位置換算成圖片座標基準
+        // 以滑鼠位置為中心縮放
         const vpRect = viewport.getBoundingClientRect();
-        const imgRect = overlayImg.getBoundingClientRect();
 
         const offsetX = clientX - (vpRect.left + vpRect.width/2);
         const offsetY = clientY - (vpRect.top  + vpRect.height/2);
 
-        // 目前縮放下，圖片中心到滑鼠點的位移（考慮 tx/ty 與 scale）
         const imgToCursorX = offsetX - tx;
         const imgToCursorY = offsetY - ty;
 
-        // 縮放後，為了讓「同一圖片點」仍停在 cursor 下，需要更新 tx/ty：
-        // newTx = offsetX - imgToCursorX * (newScale/scale)
-        // 數學推導：保持 (offset - t) 與 scale 成比例。
         const ratio = newScale / scale;
         tx = offsetX - imgToCursorX * ratio;
         ty = offsetY - imgToCursorY * ratio;
@@ -285,8 +307,7 @@
 
       // 滾輪縮放（在 overlay 任何地方都可）
       overlay.addEventListener('wheel', (e)=>{
-        // 避免整頁捲動
-        e.preventDefault();
+        e.preventDefault(); // 避免整頁捲動
         // 支援 Ctrl+捲動（觸控板 pinch）
         const deltaY = e.deltaY * (e.ctrlKey ? 0.5 : 1);
         const targetX = e.clientX;
@@ -302,8 +323,6 @@
       overlayImg.addEventListener('dblclick', (e)=>{
         e.preventDefault();
         if(scale === 1){
-          // 以點擊位置為中心放大到 lastNonOneScale
-          const vpRect = viewport.getBoundingClientRect();
           const fakeDelta = Math.log(lastNonOneScale/scale)/(-0.002); // 反推 deltaY
           zoomAt(e.clientX, e.clientY, fakeDelta);
         }else{
@@ -313,7 +332,6 @@
 
       // 拖曳平移（放大時）
       overlayImg.addEventListener('pointerdown', (e)=>{
-        // 只在圖片上拖，且必須已經放大
         if(scale <= 1) return;
         e.preventDefault();
         dragging = true;
