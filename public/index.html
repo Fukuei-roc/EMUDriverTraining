@@ -15,6 +15,7 @@
       height:auto;
       border-radius:8px;
       cursor: zoom-in; /* 可點擊放大 */
+      touch-action: manipulation;
     }
     /* 圖片在清單內的間距更好看 */
     .section-body li img{ margin-top:.25rem; }
@@ -28,19 +29,43 @@
       display: none;            /* 以 open class 控制顯示 */
       align-items: center;
       justify-content: center;
-      background: rgba(0,0,0,.75);
+      background: rgba(0,0,0,.85);
       z-index: 1000;
-      cursor: zoom-out;         /* 再點一次縮回 */
+      cursor: zoom-out;         /* 點背景縮回 */
+      overflow: hidden;         /* 禁止溢出捲動，由 JS 控制縮放與平移 */
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;       /* 讓指標事件更可控（避免瀏覽器手勢介入） */
     }
     .img-overlay.open{ display: flex; }
-    .img-overlay__img{
-      max-width: 95vw;
-      max-height: 95vh;
-      object-fit: contain;      /* 維持比例 */
-      border-radius: 8px;
+
+    /* 內層 viewport，確保圖片放大/平移時可被裁切 */
+    .img-overlay__viewport{
+      position: relative;
+      width: 95vw;
+      height: 95vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden; /* 裁切放大後超出的部分 */
+      background: #000;
+      border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,.35);
-      background: #000;         /* 照片透明邊時更好看 */
     }
+
+    .img-overlay__img{
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;      /* 維持比例，scale=1 時填滿 viewport */
+      will-change: transform;
+      /* 由 JS 套用 transform: translate() scale() */
+      cursor: zoom-in;          /* 預設顯示可放大（在 overlay 內） */
+      /* 拖曳手勢：放大時變為 grab/grabbing（由 JS 切換） */
+    }
+
+    /* 拖曳中的游標提示（由 JS 切 class） */
+    .img-overlay__img.grabbable { cursor: grab; }
+    .img-overlay__img.grabbing  { cursor: grabbing; }
   </style>
 </head>
 <body>
@@ -64,7 +89,9 @@
 
   <!-- 放大用的 overlay（預先放在 DOM，透過 class 切換） -->
   <div class="img-overlay" id="imgOverlay" aria-hidden="true">
-    <img class="img-overlay__img" id="imgOverlayImg" alt="">
+    <div class="img-overlay__viewport" id="imgViewport">
+      <img class="img-overlay__img" id="imgOverlayImg" alt="">
+    </div>
   </div>
 
   <script src="/lib/markdown-it.min.js"></script>
@@ -96,7 +123,7 @@
         // 自動折疊（H2~H5），預設全部收合
         autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
 
-        // 啟用圖片點擊放大/還原
+        // 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
         enableImageFullscreen(root);
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
@@ -117,10 +144,100 @@
       });
     }
 
-    /* 圖片全螢幕切換 */
+    /* 圖片全螢幕 + 滾輪縮放/拖曳 */
     function enableImageFullscreen(container){
-      const overlay   = document.getElementById('imgOverlay');
-      const overlayImg= document.getElementById('imgOverlayImg');
+      const overlay     = document.getElementById('imgOverlay');
+      const viewport    = document.getElementById('imgViewport');
+      const overlayImg  = document.getElementById('imgOverlayImg');
+
+      // 縮放狀態
+      let scale = 1;                 // 目前縮放
+      const MIN_SCALE = 1;           // 最小 = 剛好全螢幕
+      const MAX_SCALE = 8;           // 上限（可自行調整）
+      let tx = 0, ty = 0;            // 平移量（px）
+      let baseRect = null;           // scale=1 時圖片在 viewport 的顯示尺寸
+      let lastNonOneScale = 2;       // 供雙擊切換
+      let dragging = false;
+      let lastX = 0, lastY = 0;
+
+      function resetTransform(){
+        scale = 1;
+        tx = 0; ty = 0;
+        applyTransform();
+        overlayImg.classList.remove('grabbable','grabbing');
+        overlay.style.cursor = 'zoom-out';
+      }
+
+      function applyTransform(){
+        overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      }
+
+      function calcBaseRect(){
+        // 在 scale=1 時，圖片是 "contain" 填滿 viewport，因此直接讀取當前的顯示大小
+        // 這裡需暫時套用 scale=1/tx=0 來量測
+        const prev = overlayImg.style.transform;
+        overlayImg.style.transform = 'translate(0px, 0px) scale(1)';
+        const r = overlayImg.getBoundingClientRect();
+        overlayImg.style.transform = prev;
+        return { width: r.width, height: r.height };
+      }
+
+      function clampPan(){
+        // 限制拖曳的邊界，避免把圖片整個拖出畫面
+        const vpW = viewport.clientWidth;
+        const vpH = viewport.clientHeight;
+        const imgW = baseRect ? baseRect.width  : overlayImg.getBoundingClientRect().width / scale;
+        const imgH = baseRect ? baseRect.height : overlayImg.getBoundingClientRect().height / scale;
+
+        const scaledW = imgW * scale;
+        const scaledH = imgH * scale;
+
+        const maxX = Math.max(0, (scaledW - vpW) / 2);
+        const maxY = Math.max(0, (scaledH - vpH) / 2);
+
+        // 當圖片比 viewport 小時（scale=1 時常見），tx/ty 應回到 0
+        if(maxX === 0) tx = 0; else tx = Math.max(-maxX, Math.min(maxX, tx));
+        if(maxY === 0) ty = 0; else ty = Math.max(-maxY, Math.min(maxY, ty));
+      }
+
+      function zoomAt(clientX, clientY, deltaY){
+        // 正值 deltaY → 放大或縮小？瀏覽器中通常 deltaY>0 表示向下捲動 → 我們定義為「縮小」
+        const zoomFactor = Math.exp(-deltaY * 0.002); // 平滑一些
+        const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
+        if(newScale === scale) return;
+
+        // 以滑鼠位置為中心進行縮放：調整 tx/ty 讓「滑鼠指到的點」在縮放後仍停在同一個畫面位置
+        // 先把滑鼠位置換算成圖片座標基準
+        const vpRect = viewport.getBoundingClientRect();
+        const imgRect = overlayImg.getBoundingClientRect();
+
+        const offsetX = clientX - (vpRect.left + vpRect.width/2);
+        const offsetY = clientY - (vpRect.top  + vpRect.height/2);
+
+        // 目前縮放下，圖片中心到滑鼠點的位移（考慮 tx/ty 與 scale）
+        const imgToCursorX = offsetX - tx;
+        const imgToCursorY = offsetY - ty;
+
+        // 縮放後，為了讓「同一圖片點」仍停在 cursor 下，需要更新 tx/ty：
+        // newTx = offsetX - imgToCursorX * (newScale/scale)
+        // 數學推導：保持 (offset - t) 與 scale 成比例。
+        const ratio = newScale / scale;
+        tx = offsetX - imgToCursorX * ratio;
+        ty = offsetY - imgToCursorY * ratio;
+
+        scale = newScale;
+        clampPan();
+        applyTransform();
+
+        // 放大到 >1 才可拖曳
+        if(scale > 1){
+          overlayImg.classList.add('grabbable');
+          overlay.style.cursor = 'default';
+        }else{
+          overlayImg.classList.remove('grabbable','grabbing');
+          overlay.style.cursor = 'zoom-out';
+        }
+      }
 
       function openOverlay(img){
         overlayImg.src = img.currentSrc || img.src;
@@ -128,7 +245,16 @@
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden'; // 防捲動
+
+        // 等圖片載入完成後量測 baseRect
+        if(overlayImg.complete){
+          baseRect = calcBaseRect();
+        }else{
+          overlayImg.onload = ()=>{ baseRect = calcBaseRect(); };
+        }
+        resetTransform();
       }
+
       function closeOverlay(){
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true');
@@ -136,15 +262,19 @@
         document.body.style.overflow = '';
       }
 
-      // 點擊任何內容區的圖片 => 放大
+      // 點擊內容區的圖片 => 放大
       container.addEventListener('click', (e)=>{
         const img = e.target.closest('img');
         if(!img) return;
         openOverlay(img);
       });
 
-      // 點 overlay 任意處 => 關閉
-      overlay.addEventListener('click', closeOverlay);
+      // 點 overlay 背景關閉（避免點到圖片時關閉）
+      overlay.addEventListener('click', (e)=>{
+        if(e.target === overlay){
+          closeOverlay();
+        }
+      });
 
       // 按 ESC 也可關閉
       window.addEventListener('keydown', (e)=>{
@@ -152,6 +282,65 @@
           closeOverlay();
         }
       });
+
+      // 滾輪縮放（在 overlay 任何地方都可）
+      overlay.addEventListener('wheel', (e)=>{
+        // 避免整頁捲動
+        e.preventDefault();
+        // 支援 Ctrl+捲動（觸控板 pinch）
+        const deltaY = e.deltaY * (e.ctrlKey ? 0.5 : 1);
+        const targetX = e.clientX;
+        const targetY = e.clientY;
+        const prev = scale;
+        zoomAt(targetX, targetY, deltaY);
+        if(scale > 1 && prev === 1){
+          lastNonOneScale = Math.max(2, Math.min(3, scale)); // 設個合理的「上次放大值」
+        }
+      }, { passive: false });
+
+      // 雙擊：在「全螢幕大小」與「上次縮放」之間切換
+      overlayImg.addEventListener('dblclick', (e)=>{
+        e.preventDefault();
+        if(scale === 1){
+          // 以點擊位置為中心放大到 lastNonOneScale
+          const vpRect = viewport.getBoundingClientRect();
+          const fakeDelta = Math.log(lastNonOneScale/scale)/(-0.002); // 反推 deltaY
+          zoomAt(e.clientX, e.clientY, fakeDelta);
+        }else{
+          resetTransform();
+        }
+      });
+
+      // 拖曳平移（放大時）
+      overlayImg.addEventListener('pointerdown', (e)=>{
+        // 只在圖片上拖，且必須已經放大
+        if(scale <= 1) return;
+        e.preventDefault();
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        overlayImg.setPointerCapture(e.pointerId);
+        overlayImg.classList.add('grabbing');
+      });
+      overlayImg.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        tx += dx;
+        ty += dy;
+        clampPan();
+        applyTransform();
+      });
+      const endDrag = (e)=>{
+        if(!dragging) return;
+        dragging = false;
+        overlayImg.classList.remove('grabbing');
+        try{ overlayImg.releasePointerCapture(e.pointerId); }catch(_){}
+      };
+      overlayImg.addEventListener('pointerup', endDrag);
+      overlayImg.addEventListener('pointercancel', endDrag);
     }
 
     /* 自動折疊 + 設定縮排深度 */
