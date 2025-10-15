@@ -30,7 +30,6 @@
     .section-body ol{ list-style-position: outside; padding-left: var(--list-indent); }
 
     /* ===== 只包含一張圖片的清單項目：去圓點，並向左回退與標題對齊 ===== */
-    /* 現代瀏覽器（支援 :has）直接套用 */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
@@ -86,6 +85,9 @@
     /* 拖曳中的游標提示（由 JS 切 class） */
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
+
+    /* ✅ 當此層（或同層整體規則判定）不要畫直線時 */
+    .section.no-rail::before{ display:none; }
   </style>
 </head>
 <body>
@@ -148,6 +150,9 @@
 
         // 統一 h3~h6 的字級為「目前 h2 的字級」
         unifyHeadingSizes(root);
+
+        // 初次更新「是否要畫直線」（含同層聯動規則）
+        updateRailVisibility(root);
 
         // 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
         enableImageFullscreen(root);
@@ -213,6 +218,41 @@
       });
     }
 
+    /* ✅ 依「同層級是否有人展開」決定該層所有節點是否顯示左側直線 */
+    function updateRailVisibility(container){
+      const sections = Array.from(container.querySelectorAll('.section'));
+
+      // 依 depth 分組
+      const byDepth = new Map();
+      sections.forEach(sec=>{
+        const depth = getDepth(sec);
+        if(!byDepth.has(depth)) byDepth.set(depth, []);
+        byDepth.get(depth).push(sec);
+      });
+
+      byDepth.forEach((secs)=>{
+        // 此層是否至少有一個節點展開自己的內容
+        const anyOpen = secs.some(sec=>{
+          const body = sec.querySelector(':scope > .section-body');
+          return !!(body && !body.classList.contains('collapsed'));
+        });
+
+        // 有人開 -> 整層顯示直線；沒人開 -> 整層隱藏直線
+        secs.forEach(sec=>{
+          sec.classList.toggle('no-rail', !anyOpen);
+        });
+      });
+    }
+
+    function getDepth(sec){
+      // 讀 inline style 的 --depth；若取不到，用 computedStyle 備援
+      const inlineVal = sec.style.getPropertyValue('--depth');
+      const v = inlineVal || getComputedStyle(sec).getPropertyValue('--depth') || '0';
+      // 可能會有空白或單位，保守用 parseFloat
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
     /* 圖片全螢幕 + 滾輪縮放/拖曳 */
     function enableImageFullscreen(container){
       const overlay     = document.getElementById('imgOverlay');
@@ -242,7 +282,6 @@
       }
 
       function calcBaseRect(){
-        // 在 scale=1 時，圖片是 "contain" 填滿 viewport，因此直接讀取當前的顯示大小
         const prev = overlayImg.style.transform;
         overlayImg.style.transform = 'translate(0px, 0px) scale(1)';
         const r = overlayImg.getBoundingClientRect();
@@ -251,7 +290,6 @@
       }
 
       function clampPan(){
-        // 限制拖曳的邊界，避免把圖片整個拖出畫面
         const vpW = viewport.clientWidth;
         const vpH = viewport.clientHeight;
         const imgW = baseRect ? baseRect.width  : overlayImg.getBoundingClientRect().width / scale;
@@ -263,18 +301,15 @@
         const maxX = Math.max(0, (scaledW - vpW) / 2);
         const maxY = Math.max(0, (scaledH - vpH) / 2);
 
-        // 當圖片比 viewport 小時（scale=1 時常見），tx/ty 應回到 0
         if(maxX === 0) tx = 0; else tx = Math.max(-maxX, Math.min(maxX, tx));
         if(maxY === 0) ty = 0; else ty = Math.max(-maxY, Math.min(maxY, ty));
       }
 
       function zoomAt(clientX, clientY, deltaY){
-        // 通常 deltaY>0 = 向下捲動，這裡定義為縮小
-        const zoomFactor = Math.exp(-deltaY * 0.002); // 平滑
+        const zoomFactor = Math.exp(-deltaY * 0.002);
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
         if(newScale === scale) return;
 
-        // 以滑鼠位置為中心縮放
         const vpRect = viewport.getBoundingClientRect();
 
         const offsetX = clientX - (vpRect.left + vpRect.width/2);
@@ -291,7 +326,6 @@
         clampPan();
         applyTransform();
 
-        // 放大到 >1 才可拖曳
         if(scale > 1){
           overlayImg.classList.add('grabbable');
           overlay.style.cursor = 'default';
@@ -306,9 +340,8 @@
         overlayImg.alt = img.alt || '';
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden'; // 防捲動
+        document.body.style.overflow = 'hidden';
 
-        // 等圖片載入完成後量測 baseRect
         if(overlayImg.complete){
           baseRect = calcBaseRect();
         }else{
@@ -324,53 +357,40 @@
         document.body.style.overflow = '';
       }
 
-      // 點擊內容區的圖片 => 放大
       container.addEventListener('click', (e)=>{
         const img = e.target.closest('img');
         if(!img) return;
         openOverlay(img);
       });
 
-      // 點 overlay 背景關閉（避免點到圖片時關閉）
       overlay.addEventListener('click', (e)=>{
         if(e.target === overlay){
           closeOverlay();
         }
       });
 
-      // 按 ESC 也可關閉
       window.addEventListener('keydown', (e)=>{
         if(e.key === 'Escape' && overlay.classList.contains('open')){
           closeOverlay();
         }
       });
 
-      // 滾輪縮放（在 overlay 任何地方都可）
       overlay.addEventListener('wheel', (e)=>{
-        e.preventDefault(); // 避免整頁捲動
-        // 支援 Ctrl+捲動（觸控板 pinch）
+        e.preventDefault();
         const deltaY = e.deltaY * (e.ctrlKey ? 0.5 : 1);
-        const targetX = e.clientX;
-        const targetY = e.clientY;
-        const prev = scale;
-        zoomAt(targetX, targetY, deltaY);
-        if(scale > 1 && prev === 1){
-          lastNonOneScale = Math.max(2, Math.min(3, scale)); // 設個合理的「上次放大值」
-        }
+        zoomAt(e.clientX, e.clientY, deltaY);
       }, { passive: false });
 
-      // 雙擊：在「全螢幕大小」與「上次縮放」之間切換
       overlayImg.addEventListener('dblclick', (e)=>{
         e.preventDefault();
         if(scale === 1){
-          const fakeDelta = Math.log(lastNonOneScale/scale)/(-0.002); // 反推 deltaY
+          const fakeDelta = Math.log(2/scale)/(-0.002);
           zoomAt(e.clientX, e.clientY, fakeDelta);
         }else{
           resetTransform();
         }
       });
 
-      // 拖曳平移（放大時）
       overlayImg.addEventListener('pointerdown', (e)=>{
         if(scale <= 1) return;
         e.preventDefault();
@@ -457,7 +477,7 @@
           const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
           if(startCollapsed) body.classList.add('collapsed');
 
-          // 折疊按鈕（已修正狀態與圖示一致）
+          // 折疊按鈕（狀態與圖示一致）
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
@@ -466,6 +486,8 @@
             body.classList.toggle('collapsed', nextCollapsed);
             setToggleVisual(btn, nextCollapsed);
             saveState(key, nextCollapsed);
+            // ✅ 每次展開/收合後，刷新是否顯示左側直線（同層聯動）
+            updateRailVisibility(container);
           });
           // 放在標題最前面
           h.insertBefore(btn, h.firstChild);
