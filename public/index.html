@@ -9,10 +9,7 @@
   <link rel="stylesheet" href="/styles.css">
   <style>
     :root{
-      /* 清單縮排寬度（供 CSS 與 JS 一致使用） */
       --list-indent: 2.5rem;
-
-      /* 由 JS 動態寫入，讓清單可套用與 h3~h6 一致的字級 */
       --h-sub-font-size: 18px;
       --h-sub-line-height: 1.65;
       --h-sub-font-weight: 600;
@@ -24,13 +21,11 @@
       max-width:100%;
       height:auto;
       border-radius:8px;
-      cursor: zoom-in; /* 可點擊放大 */
+      cursor: zoom-in;
       touch-action: manipulation;
     }
-    /* 圖片在清單內的間距更好看 */
     .section-body li img{ margin-top:.25rem; }
 
-    /* 第一層清單整體往後多一個縮排（不影響巢狀清單） */
     .section-body > ul,
     .section-body > ol{
       list-style-position: outside;
@@ -68,16 +63,16 @@
     .img-overlay{
       position: fixed;
       inset: 0;
-      display: none;            /* 以 open class 控制顯示 */
+      display: none;
       align-items: center;
       justify-content: center;
       background: rgba(0,0,0,.85);
       z-index: 1000;
-      cursor: zoom-out;         /* 點背景縮回 */
-      overflow: hidden;         /* 禁止溢出捲動，由 JS 控制縮放與平移 */
+      cursor: zoom-out;
+      overflow: hidden;
       -webkit-user-select: none;
       user-select: none;
-      touch-action: none;       /* 讓指標事件更可控（避免瀏覽器手勢介入） */
+      touch-action: none;
     }
     .img-overlay.open{ display: flex; }
 
@@ -97,20 +92,56 @@
     .img-overlay__img{
       max-width: 100%;
       max-height: 100%;
-      object-fit: contain;      /* 維持比例，scale=1 時填滿 viewport */
+      object-fit: contain;
       will-change: transform;
       cursor: zoom-in;
     }
-
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
+
+    /* 讓偽 H7（role="heading"）在 section 樣式中被視為標題列 */
+    .section > h2,
+    .section > h3,
+    .section > h4,
+    .section > h5,
+    .section > h6,
+    .section > [role="heading"]{
+      display:flex;
+      align-items:center;
+      column-gap:.5rem;
+      margin: 0.35rem 0;
+      min-height: 28px;
+    }
+    .section > h2::before,
+    .section > h3::before,
+    .section > h4::before,
+    .section > h5::before,
+    .section > h6::before,
+    .section > [role="heading"]::before{
+      content:"";
+      flex:none;
+      display:inline-block;
+      width: var(--bullet-size);
+      height: var(--bullet-size);
+      border-radius: 50%;
+      background: var(--bullet);
+      margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + 2px);
+      margin-right: .35rem;
+    }
+
+    /* 非 section 包覆的偽 H7 樣式（比照 h3/h4 的排版） */
+    .md-root :not(.section) > [role="heading"]{
+      font-size: 18px;
+      margin: 18px 0 8px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
 
     .section.no-rail::before{ display:none; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- 依你的需求持續隱藏頁首與標題列 -->
     <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
       <div class="muted">Markdown Viewer（基礎版）</div>
@@ -154,31 +185,34 @@
         const text = await res.text();
         const { body } = parseFrontmatter(text);
 
-        // 渲染 Markdown
+        // 1) 渲染 Markdown
         root.innerHTML = md.render(body);
 
-        // 修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
+        // 2) 將 ./images/* 或 images/* 改寫到 /content/images/*
         rewriteRelativeImages(root);
 
-        // 標記「只含一張圖片」的 li（舊瀏覽器 fallback）
+        // 3) 把以 7 個以上 # 開頭的段落，升級成「偽 H7」
+        promotePseudoHeadings(root);
+
+        // 4) 標記「只含一張圖片」的 li（舊瀏覽器 fallback）
         markImageOnlyLis(root);
 
-        // ✅ 自動折疊（H2~H6），預設全部收合（原本是到 H5，已擴到 H6）
-        autoMakeCollapsible(root, { minLevel:2, maxLevel:6, defaultCollapsed:true });
+        // 5) 自動折疊（H2~H7），預設全部收合
+        autoMakeCollapsible(root, { minLevel:2, maxLevel:7, defaultCollapsed:true });
 
-        // 統一 h3~h6 的字級為「目前 h2 的字級」
+        // 6) 統一 h3~h6（含偽 H7）的字級到 h2 的計算樣式
         unifyHeadingSizes(root);
 
-        // 把 h3~h6 的字級抓出來，寫進 CSS 變數，供清單共用
+        // 7) 把 h3~h6（含偽 H7）的字級抓出來寫到 CSS 變數，供清單共用
         captureHeadingTypography(root);
 
-        // 任何「非圖片-only」的清單，都用和 h3~h6 一樣的字級
+        // 8) 任何「非圖片-only」的清單，都用和副標題一致的字級
         tagHeadingSizedLis(root);
 
-        // 初次更新「是否要畫直線」（含同層聯動規則）
+        // 9) 初次更新「是否要畫直線」（同層聯動）
         updateRailVisibility(root);
 
-        // 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
+        // 10) 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
         enableImageFullscreen(root);
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
@@ -196,6 +230,23 @@
           const clean = src.replace(/^\.\//, '').replace(/^\/?images\//i, 'images/');
           img.setAttribute('src', '/content/' + clean);
         }
+      });
+    }
+
+    /* 把以 7 個以上 # 開頭的段落轉成 偽 H7（role=heading, aria-level=7） */
+    function promotePseudoHeadings(container){
+      const paras = container.querySelectorAll('p');
+      paras.forEach(p=>{
+        const m = p.textContent.match(/^(#{7,})\s+(.+)$/);
+        if(!m) return;
+        const level = Math.min(m[1].length, 7); // 7 或以上都視為 7
+        const text  = m[2].trim();
+
+        const h = document.createElement('div');
+        h.setAttribute('role', 'heading');
+        h.setAttribute('aria-level', String(level));
+        h.textContent = text;
+        p.replaceWith(h);
       });
     }
 
@@ -221,7 +272,7 @@
       });
     }
 
-    /* 統一 h3~h6 的字級為 h2 的計算樣式（含行高與上下邊距） */
+    /* 統一 h3~h6 與偽 H7 的字級為 h2 的計算樣式 */
     function unifyHeadingSizes(container){
       const probeH2 = container.querySelector('h2');
       if(!probeH2){ return; }
@@ -232,7 +283,7 @@
       const marginBottom = cs.marginBottom;
       const fontWeight = cs.fontWeight;
 
-      container.querySelectorAll('h3,h4,h5,h6').forEach(h=>{
+      container.querySelectorAll('h3,h4,h5,h6,[role="heading"][aria-level]').forEach(h=>{
         h.style.fontSize   = fontSize;
         h.style.lineHeight = lineHeight;
         h.style.marginTop  = marginTop;
@@ -241,9 +292,9 @@
       });
     }
 
-    /* 讀取任一個 h3（沒有就取 h2）作為清單字級來源 */
+    /* 讀取任一個 h3（或 h2）作為清單字級來源 */
     function captureHeadingTypography(container){
-      const ref = container.querySelector('h3,h4,h5,h6') || container.querySelector('h2');
+      const ref = container.querySelector('h3,h4,h5,h6,[role="heading"][aria-level]') || container.querySelector('h2');
       if(!ref) return;
       const cs = getComputedStyle(ref);
       const root = document.documentElement;
@@ -252,7 +303,7 @@
       root.style.setProperty('--h-sub-font-weight', cs.fontWeight);
     }
 
-    /* 把所有「非圖片-only」的 li 都視為文字型清單，調整字級為 h3~h6 */
+    /* 把所有「非圖片-only」的 li 都視為文字型清單，調整字級為副標題等級 */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('.section-body li');
       lis.forEach(li=>{
@@ -454,9 +505,10 @@
       overlayImg.addEventListener('pointercancel', endDrag);
     }
 
-    /* 自動折疊 + 設定縮排深度（H2~H6） */
-    function autoMakeCollapsible(container, {minLevel=2, maxLevel=6, defaultCollapsed=false}={}){
-      const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
+    /* 自動折疊 + 設定縮排深度（H2~H7） */
+    function autoMakeCollapsible(container, {minLevel=2, maxLevel=7, defaultCollapsed=false}={}){
+      const headSel = 'h2,h3,h4,h5,h6,[role="heading"][aria-level]';
+      const allHeads = Array.from(container.querySelectorAll(headSel));
       const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
 
       for(let i = headings.length - 1; i >= 0; i--){
@@ -464,7 +516,7 @@
         if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
         const curLv  = levelOf(h);
-        const depth  = Math.max(0, curLv - minLevel); // H2=0, H3=1, ... H6=4
+        const depth  = Math.max(0, curLv - minLevel); // H2=0,... H7=5
         const bodyFrag = document.createDocumentFragment();
         let n = h.nextSibling;
         let hasChildHeading = false;
@@ -526,11 +578,25 @@
       btn.setAttribute('aria-expanded', String(!collapsed));
       btn.title = collapsed ? '展開' : '收合';
     }
-    function isHeadingEl(el){ return !!el && el.tagName && /^H[2-6]$/.test(el.tagName); }
-    function levelOf(hEl){ return parseInt(hEl.tagName.slice(1),10); }
+    function isHeadingEl(el){
+      if(!el) return false;
+      if(el.tagName && /^H[2-6]$/.test(el.tagName)) return true;
+      if(el.getAttribute && el.getAttribute('role') === 'heading'){
+        const lv = parseInt(el.getAttribute('aria-level'), 10);
+        return lv >= 2 && lv <= 7;
+      }
+      return false;
+    }
+    function levelOf(hEl){
+      if(hEl.getAttribute && hEl.getAttribute('role') === 'heading'){
+        const lv = parseInt(hEl.getAttribute('aria-level'), 10);
+        if(Number.isFinite(lv)) return lv;
+      }
+      return parseInt(hEl.tagName.slice(1),10);
+    }
     function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
-    /* Frontmatter 解析（修正了誤植） */
+    /* Frontmatter 解析 */
     function parseFrontmatter(src){
       if(src.charCodeAt(0) === 0xFEFF) src = src.slice(1);
       const m = src.match(/^---\s*[\r\n]([\s\S]*?)\r?\n---\s*[\r\n]([\s\S]*)$/);
