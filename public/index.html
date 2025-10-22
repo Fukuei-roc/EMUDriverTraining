@@ -10,7 +10,7 @@
   <style>
     :root{
       /* 清單縮排寬度（供 CSS 與 JS 一致使用） */
-      --list-indent: 2.5rem;  /* ↑ 原 1.25rem，增加縮排感 */
+      --list-indent: 2.5rem;
 
       /* 由 JS 動態寫入，讓清單可套用與 h3~h6 一致的字級 */
       --h-sub-font-size: 18px;
@@ -30,13 +30,12 @@
     /* 圖片在清單內的間距更好看 */
     .section-body li img{ margin-top:.25rem; }
 
-    /* ✅ 第一層清單整體往後多一個縮排（不影響巢狀清單） */
+    /* 第一層清單整體往後多一個縮排（不影響巢狀清單） */
     .section-body > ul,
     .section-body > ol{
       list-style-position: outside;
-      padding-left: calc(var(--list-indent) * 2.5); /* ↑ 原 *2，讓縮排更明顯 */
+      padding-left: calc(var(--list-indent) * 2.5);
     }
-    /* 內層巢狀清單維持原有縮排邏輯（在父層基礎上再加一階） */
     .section-body ul ul,
     .section-body ul ol,
     .section-body ol ul,
@@ -45,21 +44,20 @@
       list-style-position: outside;
     }
 
-    /* ===== 只包含一張圖片的清單項目：去圓點，並向左回退（在新的整體 +1 階後，淨效 = +1 階） ===== */
+    /* 只包含一張圖片的清單項目：去圓點並回退一階 */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
       padding-left: 0;
       margin-left: calc(-1 * var(--list-indent));
     }
-    /* 舊瀏覽器 fallback：由 JS 加上的類別 */
     .section-body li.li-image-only{
       list-style: none;
       padding-left: 0;
       margin-left: calc(-1 * var(--list-indent));
     }
 
-    /* 讓「文字型清單」字級 = h3~h6（不影響圖片-only清單） */
+    /* 讓文字型清單字級 = h3~h6 */
     .section-body li.li-as-heading{
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
@@ -83,7 +81,6 @@
     }
     .img-overlay.open{ display: flex; }
 
-    /* 內層 viewport，確保圖片放大/平移時可被裁切 */
     .img-overlay__viewport{
       position: relative;
       width: 95vw;
@@ -91,7 +88,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden; /* 裁切放大後超出的部分 */
+      overflow: hidden;
       background: #000;
       border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,.35);
@@ -102,14 +99,12 @@
       max-height: 100%;
       object-fit: contain;      /* 維持比例，scale=1 時填滿 viewport */
       will-change: transform;
-      cursor: zoom-in;          /* 預設顯示可放大（在 overlay 內） */
+      cursor: zoom-in;
     }
 
-    /* 拖曳中的游標提示（由 JS 切 class） */
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
 
-    /* ✅ 依規則不畫直線時 */
     .section.no-rail::before{ display:none; }
   </style>
 </head>
@@ -165,11 +160,11 @@
         // 修正 Markdown 中的相對圖片路徑 -> 指向 /content/images/*
         rewriteRelativeImages(root);
 
-        // 標記「只含一張圖片」的 li（舊瀏覽器 fallback，不支援 :has 時也能套用樣式）
+        // 標記「只含一張圖片」的 li（舊瀏覽器 fallback）
         markImageOnlyLis(root);
 
-        // 自動折疊（H2~H5），預設全部收合
-        autoMakeCollapsible(root, { minLevel:2, maxLevel:5, defaultCollapsed:true });
+        // ✅ 自動折疊（H2~H6），預設全部收合（原本是到 H5，已擴到 H6）
+        autoMakeCollapsible(root, { minLevel:2, maxLevel:6, defaultCollapsed:true });
 
         // 統一 h3~h6 的字級為「目前 h2 的字級」
         unifyHeadingSizes(root);
@@ -177,7 +172,7 @@
         // 把 h3~h6 的字級抓出來，寫進 CSS 變數，供清單共用
         captureHeadingTypography(root);
 
-        // ✅ 任何「非圖片-only」的清單，都用和 h3~h6 一樣的字級
+        // 任何「非圖片-only」的清單，都用和 h3~h6 一樣的字級
         tagHeadingSizedLis(root);
 
         // 初次更新「是否要畫直線」（含同層聯動規則）
@@ -208,7 +203,6 @@
     function markImageOnlyLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
-        // 過濾純空白文字節點
         const kids = Array.from(li.childNodes).filter(n => !(n.nodeType===3 && !n.textContent.trim()));
         let onlyImg = false;
 
@@ -262,16 +256,14 @@
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('.section-body li');
       lis.forEach(li=>{
-        if(li.classList.contains('li-image-only')) return; // 跳過圖片-only
+        if(li.classList.contains('li-image-only')) return;
         li.classList.add('li-as-heading');
       });
     }
 
-    /* ✅ 依「同層級是否有人展開」決定該層所有節點是否顯示左側直線 */
+    /* 依「同層級是否有人展開」決定該層所有節點是否顯示左側直線 */
     function updateRailVisibility(container){
       const sections = Array.from(container.querySelectorAll('.section'));
-
-      // 依 depth 分組
       const byDepth = new Map();
       sections.forEach(sec=>{
         const depth = getDepth(sec);
@@ -280,13 +272,10 @@
       });
 
       byDepth.forEach((secs)=>{
-        // 此層是否至少有一個節點展開自己的內容
         const anyOpen = secs.some(sec=>{
           const body = sec.querySelector(':scope > .section-body');
           return !!(body && !body.classList.contains('collapsed'));
         });
-
-        // 有人開 -> 整層顯示直線；沒人開 -> 整層隱藏直線
         secs.forEach(sec=>{
           sec.classList.toggle('no-rail', !anyOpen);
         });
@@ -294,7 +283,6 @@
     }
 
     function getDepth(sec){
-      // 讀 inline style 的 --depth；若取不到，用 computedStyle 備援
       const inlineVal = sec.style.getPropertyValue('--depth');
       const v = inlineVal || getComputedStyle(sec).getPropertyValue('--depth') || '0';
       const n = parseFloat(v);
@@ -307,13 +295,11 @@
       const viewport    = document.getElementById('imgViewport');
       const overlayImg  = document.getElementById('imgOverlayImg');
 
-      // 縮放狀態
       let scale = 1;
       const MIN_SCALE = 1;
       const MAX_SCALE = 8;
       let tx = 0, ty = 0;
       let baseRect = null;
-      let lastNonOneScale = 2;
       let dragging = false;
       let lastX = 0, lastY = 0;
 
@@ -359,7 +345,6 @@
         if(newScale === scale) return;
 
         const vpRect = viewport.getBoundingClientRect();
-
         const offsetX = clientX - (vpRect.left + vpRect.width/2);
         const offsetY = clientY - (vpRect.top  + vpRect.height/2);
 
@@ -469,8 +454,8 @@
       overlayImg.addEventListener('pointercancel', endDrag);
     }
 
-    /* 自動折疊 + 設定縮排深度 */
-    function autoMakeCollapsible(container, {minLevel=2, maxLevel=5, defaultCollapsed=false}={}){
+    /* 自動折疊 + 設定縮排深度（H2~H6） */
+    function autoMakeCollapsible(container, {minLevel=2, maxLevel=6, defaultCollapsed=false}={}){
       const allHeads = Array.from(container.querySelectorAll('h2,h3,h4,h5,h6'));
       const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
 
@@ -479,7 +464,7 @@
         if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
         const curLv  = levelOf(h);
-        const depth  = Math.max(0, curLv - minLevel); // H2=0, H3=1, ...
+        const depth  = Math.max(0, curLv - minLevel); // H2=0, H3=1, ... H6=4
         const bodyFrag = document.createDocumentFragment();
         let n = h.nextSibling;
         let hasChildHeading = false;
@@ -504,14 +489,12 @@
           n = next;
         }
 
-        // 建立容器並設定深度
         const wrap = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
         h.parentNode.insertBefore(wrap, h);
         wrap.appendChild(h);
 
-        // 內容區
         if(hasChildHeading || bodyFrag.childNodes.length){
           const body = document.createElement('div');
           body.className = 'section-body';
@@ -523,7 +506,6 @@
           const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
           if(startCollapsed) body.classList.add('collapsed');
 
-          // 折疊按鈕（狀態與圖示一致）
           const btn = document.createElement('button');
           btn.className = 'section-toggle';
           setToggleVisual(btn, body.classList.contains('collapsed'));
@@ -532,10 +514,8 @@
             body.classList.toggle('collapsed', nextCollapsed);
             setToggleVisual(btn, nextCollapsed);
             saveState(key, nextCollapsed);
-            // 每次展開/收合後，刷新是否顯示左側直線（同層聯動）
             updateRailVisibility(container);
           });
-          // 放在標題最前面
           h.insertBefore(btn, h.firstChild);
         }
       }
@@ -550,10 +530,10 @@
     function levelOf(hEl){ return parseInt(hEl.tagName.slice(1),10); }
     function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
-    /* Frontmatter 解析 */
+    /* Frontmatter 解析（修正了誤植） */
     function parseFrontmatter(src){
       if(src.charCodeAt(0) === 0xFEFF) src = src.slice(1);
-      const m = src.match(/^---\s*[\r\n]([\s須\S]*?)\r?\n---\s*[\r\n]([\s\S]*)$/);
+      const m = src.match(/^---\s*[\r\n]([\s\S]*?)\r?\n---\s*[\r\n]([\s\S]*)$/);
       if(m) return { meta: yamlToJSON(m[1]), body: m[2] };
       return { meta:{}, body: src };
     }
