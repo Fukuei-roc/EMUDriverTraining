@@ -34,7 +34,6 @@
       padding-left: var(--list-indent) !important;
       margin-left: 0 !important;
     }
-    
     .section-body ul ul,
     .section-body ul ol,
     .section-body ol ul,
@@ -43,11 +42,7 @@
       list-style-position: outside;
       margin-left: 0 !important;
     }
-
-    /* 清單項目本身不額外縮排 */
-    .section-body li {
-      padding-left: 0 !important;
-    }
+    .section-body li { padding-left: 0 !important; }
 
     /* 只包含一張圖片的清單項目：去圓點並回退一階 */
     .section-body li:has(> img:only-child),
@@ -201,13 +196,13 @@
         // 2) 將 ./images/* 或 images/* 改寫到 /content/images/*
         rewriteRelativeImages(root);
 
-        // 3) 把以 7 個以上 # 開頭的段落，升級成「偽 H7」
+        // 3) 把以 7 個以上 # 開頭的行，升級成「偽 H7」
         promotePseudoHeadings(root);
 
         // 4) 標記「只含一張圖片」的 li（舊瀏覽器 fallback）
         markImageOnlyLis(root);
 
-        // 5) 自動折疊（H2~H7），預設全部收合
+        // 5) 自動折疊（H2~H7），預設全部收合（就算沒有子內容也顯示按鈕）
         autoMakeCollapsible(root, { minLevel:2, maxLevel:7, defaultCollapsed:true });
 
         // 6) 統一 h3~h6（含偽 H7）的字級到 h2 的計算樣式
@@ -243,20 +238,51 @@
       });
     }
 
-    /* 把以 7 個以上 # 開頭的段落轉成 偽 H7（role=heading, aria-level=7） */
+    /* ✅ 逐行將段落中以 7+ 個 # 開頭的行，轉成偽 H7（role="heading" aria-level=7）
+       - 允許行前有空白
+       - 一個 <p> 裡若有多行符合，會拆成多個 heading
+       - 其他非符合的行會保留成一般 <p> */
     function promotePseudoHeadings(container){
       const paras = container.querySelectorAll('p');
       paras.forEach(p=>{
-        const m = p.textContent.match(/^(#{7,})\s+(.+)$/);
-        if(!m) return;
-        const level = Math.min(m[1].length, 7); // 7 或以上都視為 7
-        const text  = m[2].trim();
+        const raw = p.textContent;
+        if(!raw) return;
 
-        const h = document.createElement('div');
-        h.setAttribute('role', 'heading');
-        h.setAttribute('aria-level', String(level));
-        h.textContent = text;
-        p.replaceWith(h);
+        const lines = raw.split(/\r?\n/);
+        // 若全部都沒有以 ####### 開頭的行，略過
+        const hasAny = lines.some(line => /^\s*#{7,}\s+.+/.test(line));
+        if(!hasAny) return;
+
+        const frag = document.createDocumentFragment();
+        let buffer = [];
+
+        function flushBuffer(){
+          if(buffer.length){
+            const pp = document.createElement('p');
+            pp.textContent = buffer.join('\n');
+            frag.appendChild(pp);
+            buffer = [];
+          }
+        }
+
+        lines.forEach(line=>{
+          const m = line.match(/^\s*(#{7,})\s+(.+)$/);
+          if(m){
+            // 先把累積的普通文字吐出
+            flushBuffer();
+            const h = document.createElement('div');
+            h.setAttribute('role','heading');
+            h.setAttribute('aria-level','7'); // 7 或以上都歸 7
+            h.textContent = m[2].trim();
+            frag.appendChild(h);
+          }else{
+            buffer.push(line);
+          }
+        });
+        flushBuffer();
+
+        // 用 fragment 取代原 <p>
+        p.replaceWith(frag);
       });
     }
 
@@ -322,8 +348,7 @@
       });
     }
 
-    /* 更新每個 section 的 "是否要畫直線"（no-rail）狀態
-       同層只有一個 heading = 孤立 => .no-rail */
+    /* 更新每個 section 的 "是否要畫直線"（同層只有一個 heading = 孤立 => .no-rail） */
     function updateRailVisibility(container){
       const allSec = container.querySelectorAll('.section');
       allSec.forEach(sec=>{
@@ -505,35 +530,34 @@
       overlayImg.addEventListener('pointercancel', endDrag);
     }
 
-    /* 自動折疊 + 設定縮排深度（H2~H7） */
-    function autoMakeCollapsible(container, {minLevel=2, maxLevel=7, defaultCollapsed=false}={}){
-      const headSel = 'h2,h3,h4,h5,h6,[role="heading"][aria-level]';
-      const allHeads = Array.from(container.querySelectorAll(headSel));
-      const headings = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
+    /* 自動折疊 + 設定縮排深度（H2~H7）
+       🔧 關鍵：就算該標題後沒有子內容，也一律建立 .section-body 並插入收合按鈕 */
+    function autoMakeCollapsible(container, {minLevel=2, maxLevel=7, defaultCollapsed=false} = {}){
+      const headSel   = 'h2,h3,h4,h5,h6,[role="heading"][aria-level]';
+      const allHeads  = Array.from(container.querySelectorAll(headSel));
+      const headings  = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
 
-      for(let i = headings.length - 1; i >= 0; i--){
+      for (let i = headings.length - 1; i >= 0; i--) {
         const h = headings[i];
         if (h.parentElement && h.parentElement.classList.contains('section')) continue;
 
-        const curLv  = levelOf(h);
-        const depth  = Math.max(0, curLv - minLevel); // H2=0,... H7=5
+        const curLv    = levelOf(h);
+        const depth    = Math.max(0, curLv - minLevel); // H2=0,... H7=5
         const bodyFrag = document.createDocumentFragment();
-        let n = h.nextSibling;
-        let hasChildHeading = false;
 
-        while(n){
+        // 收集 body：直到遇到同級或更上層的下一個 heading/section
+        let n = h.nextSibling;
+        while (n) {
           const isEl = n.nodeType === 1;
           if (isEl && isHeadingEl(n)) {
             const lv = levelOf(n);
             if (lv <= curLv) break;
-            if (lv > curLv) hasChildHeading = true;
           }
           if (isEl && n.classList.contains('section')) {
             const first = n.firstElementChild;
             if (first && isHeadingEl(first)) {
               const lv = levelOf(first);
               if (lv <= curLv) break;
-              if (lv > curLv) hasChildHeading = true;
             }
           }
           const next = n.nextSibling;
@@ -541,35 +565,34 @@
           n = next;
         }
 
+        // 包裝為 .section（不論是否有子內容，都建立 body + 按鈕）
         const wrap = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
         h.parentNode.insertBefore(wrap, h);
         wrap.appendChild(h);
 
-        if(hasChildHeading || bodyFrag.childNodes.length){
-          const body = document.createElement('div');
-          body.className = 'section-body';
-          body.appendChild(bodyFrag);
-          wrap.appendChild(body);
+        const body = document.createElement('div');
+        body.className = 'section-body';
+        body.appendChild(bodyFrag);
+        wrap.appendChild(body);
 
-          const key = 'fold:' + curLv + ':' + normalizeText(h.textContent);
-          const saved = loadState(key);
-          const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
-          if(startCollapsed) body.classList.add('collapsed');
+        const key = 'fold:' + curLv + ':' + normalizeText(h.textContent);
+        const saved = loadState(key);
+        const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
+        if (startCollapsed) body.classList.add('collapsed');
 
-          const btn = document.createElement('button');
-          btn.className = 'section-toggle';
-          setToggleVisual(btn, body.classList.contains('collapsed'));
-          btn.addEventListener('click', ()=>{
-            const nextCollapsed = !body.classList.contains('collapsed');
-            body.classList.toggle('collapsed', nextCollapsed);
-            setToggleVisual(btn, nextCollapsed);
-            saveState(key, nextCollapsed);
-            updateRailVisibility(container);
-          });
-          h.insertBefore(btn, h.firstChild);
-        }
+        const btn = document.createElement('button');
+        btn.className = 'section-toggle';
+        setToggleVisual(btn, body.classList.contains('collapsed'));
+        btn.addEventListener('click', () => {
+          const nextCollapsed = !body.classList.contains('collapsed');
+          body.classList.toggle('collapsed', nextCollapsed);
+          setToggleVisual(btn, nextCollapsed);
+          saveState(key, nextCollapsed);
+          updateRailVisibility(container);
+        });
+        h.insertBefore(btn, h.firstChild);
       }
     }
 
