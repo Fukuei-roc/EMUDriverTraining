@@ -85,8 +85,8 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
  JS 會在 .section 上設定自訂屬性 style="--depth:N" */
 .section{
 position: relative;
-/* 內側縮排 = 層級 * 縮排寬 + 左側圖示區 */
---_pad: calc(var(--depth, 0) * var(--indent) + var(--gutter));
+/* 🔧 修改：所有層級使用固定縮排，不再依 depth 倍增 */
+--_pad: calc(var(--indent) + var(--gutter));
 padding-left: var(--_pad);
 }
 

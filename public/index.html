@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/styles.css">
   <style>
     :root{
+      /* 🔧 統一縮排參數 - 修改此值可調整所有層級的縮排 */
       --list-indent: 2.5rem;
       --h-sub-font-size: 18px;
       --h-sub-line-height: 1.65;
@@ -26,17 +27,26 @@
     }
     .section-body li img{ margin-top:.25rem; }
 
+    /* 🔧 關鍵修改：統一所有層級的清單縮排 */
     .section-body > ul,
     .section-body > ol{
       list-style-position: outside;
-      padding-left: calc(var(--list-indent) * 2.5);
+      padding-left: var(--list-indent) !important;
+      margin-left: 0 !important;
     }
+    
     .section-body ul ul,
     .section-body ul ol,
     .section-body ol ul,
     .section-body ol ol{
-      padding-left: var(--list-indent);
+      padding-left: var(--list-indent) !important;
       list-style-position: outside;
+      margin-left: 0 !important;
+    }
+
+    /* 清單項目本身不額外縮排 */
+    .section-body li {
+      padding-left: 0 !important;
     }
 
     /* 只包含一張圖片的清單項目：去圓點並回退一階 */
@@ -303,7 +313,7 @@
       root.style.setProperty('--h-sub-font-weight', cs.fontWeight);
     }
 
-    /* 把所有「非圖片-only」的 li 都視為文字型清單，調整字級為副標題等級 */
+    /* 讓「非圖片-only」的 li 用 .li-as-heading 標記，套用副標題字級 */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('.section-body li');
       lis.forEach(li=>{
@@ -312,66 +322,56 @@
       });
     }
 
-    /* 依「同層級是否有人展開」決定該層所有節點是否顯示左側直線 */
+    /* 更新每個 section 的 "是否要畫直線"（no-rail）狀態
+       同層只有一個 heading = 孤立 => .no-rail */
     function updateRailVisibility(container){
-      const sections = Array.from(container.querySelectorAll('.section'));
-      const byDepth = new Map();
-      sections.forEach(sec=>{
-        const depth = getDepth(sec);
-        if(!byDepth.has(depth)) byDepth.set(depth, []);
-        byDepth.get(depth).push(sec);
-      });
-
-      byDepth.forEach((secs)=>{
-        const anyOpen = secs.some(sec=>{
-          const body = sec.querySelector(':scope > .section-body');
-          return !!(body && !body.classList.contains('collapsed'));
+      const allSec = container.querySelectorAll('.section');
+      allSec.forEach(sec=>{
+        const lv = levelOf(sec.firstElementChild);
+        const parent = sec.parentElement;
+        const sibs = Array.from(parent.children).filter(el=>el.classList.contains('section'));
+        const sameLv = sibs.filter(s=>{
+          const h = s.firstElementChild;
+          return h && levelOf(h)===lv;
         });
-        secs.forEach(sec=>{
-          sec.classList.toggle('no-rail', !anyOpen);
-        });
+        const isAlone = (sameLv.length===1);
+        sec.classList.toggle('no-rail', isAlone);
       });
     }
 
-    function getDepth(sec){
-      const inlineVal = sec.style.getPropertyValue('--depth');
-      const v = inlineVal || getComputedStyle(sec).getPropertyValue('--depth') || '0';
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    /* 圖片全螢幕 + 滾輪縮放/拖曳 */
+    /* 點擊圖片 -> overlay 全螢幕 + 滾輪縮放/拖曳 */
     function enableImageFullscreen(container){
-      const overlay     = document.getElementById('imgOverlay');
-      const viewport    = document.getElementById('imgViewport');
-      const overlayImg  = document.getElementById('imgOverlayImg');
+      const overlay    = document.getElementById('imgOverlay');
+      const viewport   = document.getElementById('imgViewport');
+      const overlayImg = document.getElementById('imgOverlayImg');
+      if(!overlay || !viewport || !overlayImg) return;
 
-      let scale = 1;
-      const MIN_SCALE = 1;
-      const MAX_SCALE = 8;
-      let tx = 0, ty = 0;
+      let scale = 1, tx = 0, ty = 0;
+      let dragging = false, lastX = 0, lastY = 0;
       let baseRect = null;
-      let dragging = false;
-      let lastX = 0, lastY = 0;
+      const MIN_SCALE = 1, MAX_SCALE = 5;
 
-      function resetTransform(){
-        scale = 1;
-        tx = 0; ty = 0;
-        applyTransform();
-        overlayImg.classList.remove('grabbable','grabbing');
-        overlay.style.cursor = 'zoom-out';
+      function calcBaseRect(){
+        if(!overlayImg.complete) return null;
+        const vpW = viewport.clientWidth;
+        const vpH = viewport.clientHeight;
+        const iW  = overlayImg.naturalWidth;
+        const iH  = overlayImg.naturalHeight;
+        const scaleW = vpW / iW;
+        const scaleH = vpH / iH;
+        const fitScale = Math.min(scaleW, scaleH, 1);
+        return { width: iW * fitScale, height: iH * fitScale };
       }
 
       function applyTransform(){
         overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
       }
 
-      function calcBaseRect(){
-        const prev = overlayImg.style.transform;
-        overlayImg.style.transform = 'translate(0px, 0px) scale(1)';
-        const r = overlayImg.getBoundingClientRect();
-        overlayImg.style.transform = prev;
-        return { width: r.width, height: r.height };
+      function resetTransform(){
+        scale = 1; tx = 0; ty = 0;
+        applyTransform();
+        overlayImg.classList.remove('grabbable','grabbing');
+        overlay.style.cursor = 'zoom-out';
       }
 
       function clampPan(){
