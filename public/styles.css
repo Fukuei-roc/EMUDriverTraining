@@ -17,13 +17,15 @@
   --radius:14px;
   --maxw:980px;
 
+  /* ✨ 統一縮排參數：調整這個值即可改變所有層級的縮排寬度 */
+  --indent: 28px;           /* 每一層的統一縮排寬度 */
+  
   /* 折疊樹狀視覺 */
-  --indent:22px;            /* 每一層的縮排寬 */
-  --gutter:18px;            /* 子彈 + 三角形 的作用區寬 */
-  --rail-w:1.5px;           /* 連接直線寬度 */
-  --bullet-size:6px;        /* 實心點直徑 */
-  --rail:#dbe1f1;           /* 直線顏色（亮） */
-  --bullet:#6b778d;         /* 實心點顏色（亮） */
+  --gutter: 20px;           /* 子彈 + 三角形 的作用區寬 */
+  --rail-w: 1.5px;          /* 連接直線寬度 */
+  --bullet-size: 6px;       /* 實心點直徑 */
+  --rail: #dbe1f1;          /* 直線顏色（亮） */
+  --bullet: #6b778d;        /* 實心點顏色（亮） */
 
   /* 圓點水平微調（負值往左、正值往右） */
   --bullet-nudge-x: +1px;
@@ -83,22 +85,31 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 }
 
 /* ===========================
-   Roam 風樹狀：連貫直線＋實心點＋縮排（針對 .section）
+   Roam 風樹狀：連貫直線＋實心點＋統一縮排（針對 .section）
    =========================== */
 
 /* .section 由 JS 包裝：每個可折疊節點一個 .section
-   JS 會在 .section 上設定 style="--depth:N" */
+   JS 會在 .section 上設定 style="--depth:N" 
+   關鍵：使用 margin-left 而非 padding-left，避免內部 ul/ol 的累加問題 */
 .section{
   position: relative;
-  /* 固定縮排（每層加 var(--indent)） */
-  padding-left: calc((var(--depth, 0) * var(--indent)) + var(--gutter));
+  /* ✨ 使用 margin-left 確保每層都是純粹的固定距離增量 */
+  margin-left: var(--indent);
+  /* 統一的內部填充，給按鈕和圓點留出空間 */
+  padding-left: var(--gutter);
 }
 
-/* 左側導軌（rail），由父子疊加形成連續效果 */
+/* 最外層（depth=0）不需要額外的 margin */
+.section[style*="--depth: 0"]{
+  margin-left: 0;
+}
+
+/* 左側導軌（rail），固定在左側 */
 .section::before{
   content:"";
   position:absolute;
-  left: calc((var(--depth, 0) * var(--indent)) + var(--gutter)/2 - var(--rail-w)/2);
+  /* 導軌固定在左邊界往右 gutter/2 的位置 */
+  left: calc(var(--gutter)/2 - var(--rail-w)/2);
   top: -12px;
   bottom: -12px;
   width: var(--rail-w);
@@ -146,9 +157,17 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 /* 讓圖像不會壓到左側樹狀區；若需要也可以取消這行 */
 .section-body img{ margin-left: .25rem; }
 
-/* 內文中的清單（仍是原生 ul/ol）在 body 中每層各加一階縮排 */
+/* ✨ 關鍵修正：section-body 內的 ul/ol 不要有 padding-left 
+   因為每個 li 會被轉成 .section，而 .section 已經有 margin-left 了 */
 .section-body ul, .section-body ol{
-  padding-left: var(--indent);
+  padding-left: 0;
+  margin-left: 0;
+  list-style: none;  /* 移除預設的 list style */
+}
+
+/* 如果 section-body 內還有原生的 li（未被轉換的），給予縮排 */
+.section-body li{
+  margin-left: var(--indent);
 }
 
 /* 連結風格 */

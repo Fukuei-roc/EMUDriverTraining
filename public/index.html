@@ -155,6 +155,23 @@
       }
     }
 
+    /* ✨ 修正：計算 li 的真實層級深度 */
+    function listDepth(li){
+      let depth = 0;
+      let current = li.parentElement;
+      
+      // 向上遍歷，只計算 UL/OL 的數量
+      while(current && current !== root){
+        if(current.tagName === 'UL' || current.tagName === 'OL'){
+          depth++;
+        }
+        current = current.parentElement;
+      }
+      
+      // 減1是因為最外層的 list 不算深度
+      return Math.max(0, depth - 1);
+    }
+
     /* 把 <li> 轉成 .section：
        - 計算 li 的深度（祖先 <ul>/<ol> 的層數）
        - 取「第一段非清單內容」作為標題（其餘進 body）
@@ -243,16 +260,6 @@
       });
     }
 
-    function listDepth(li){
-      let depth = 0, p = li.parentElement;
-      while(p){
-        if(p.tagName==='UL' || p.tagName==='OL') depth++;
-        p = p.parentElement;
-      }
-      // li 自身所在的 list 才算第一層，做個回退
-      return Math.max(0, depth - 1);
-    }
-
     function setToggleVisual(btn, collapsed){
       btn.textContent = collapsed ? '▶' : '▼';
       btn.setAttribute('aria-expanded', String(!collapsed));
@@ -293,51 +300,54 @@
       });
     }
 
-    /* 讓「非圖片-only」的 li 用 .li-as-heading 標記，套用副標題字級 */
+    /* 標記純文字型清單項目（用來將字級對齊 heading） */
     function tagHeadingSizedLis(container){
-      const lis = container.querySelectorAll('.section-body li');
+      const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
-        if(li.classList.contains('li-image-only')) return;
-        li.classList.add('li-as-heading');
+        const kids = Array.from(li.childNodes).filter(n => {
+          if(n.nodeType === 3) return !!n.textContent.trim();
+          return n.nodeType === 1;
+        });
+        const hasNoNestedList = !li.querySelector('ul,ol');
+        const hasNoImg = !li.querySelector('img');
+        if(kids.length === 1 && hasNoNestedList && hasNoImg){
+          const el = kids[0];
+          if(el.nodeType === 3 || (el.nodeType === 1 && !['IMG','UL','OL'].includes(el.tagName))){
+            li.classList.add('li-as-heading');
+          }
+        }
       });
     }
 
-    /* 更新每個 section 的「是否要畫直線」：同層只有一個則不畫（較乾淨） */
+    /* 更新導軌可見性：若同層只有單一子項，就不需要畫導軌 */
     function updateRailVisibility(container){
-      const allSec = container.querySelectorAll('.section');
-      allSec.forEach(sec=>{
-        const parent = sec.parentElement;
-        if(!parent) return;
-        const sameLevelSiblings = Array.from(parent.children).filter(el=>el.classList && el.classList.contains('section'));
-        const isAlone = (sameLevelSiblings.length===1);
-        sec.classList.toggle('no-rail', isAlone);
+      const sections = container.querySelectorAll('.section');
+      sections.forEach(s=>{
+        const body = s.querySelector('.section-body');
+        if(!body) return;
+        const childSections = Array.from(body.children).filter(c => c.classList.contains('section'));
+        const shouldHide = (childSections.length === 1);
+        childSections.forEach(child=>{
+          child.classList.toggle('no-rail', shouldHide);
+        });
       });
     }
 
-    /* 圖片全螢幕＋縮放拖曳 */
+    /* 圖片全螢幕（縮放+拖曳） */
     function enableImageFullscreen(container){
-      const overlay    = document.getElementById('imgOverlay');
-      const viewport   = document.getElementById('imgViewport');
+      const overlay = document.getElementById('imgOverlay');
+      const viewport = document.getElementById('imgViewport');
       const overlayImg = document.getElementById('imgOverlayImg');
       if(!overlay || !viewport || !overlayImg) return;
 
-      let scale = 1, tx = 0, ty = 0;
-      let dragging = false, lastX = 0, lastY = 0;
-      let baseRect = null;
+      let scale = 1, tx = 0, ty = 0, dragging = false, lastX = 0, lastY = 0, baseRect = null;
       const MIN_SCALE = 1, MAX_SCALE = 5;
-
-      function calcBaseRect(){
-        if(!overlayImg.complete) return null;
-        const vpW = viewport.clientWidth;
-        const vpH = viewport.clientHeight;
-        const iW  = overlayImg.naturalWidth;
-        const iH  = overlayImg.naturalHeight;
-        const scaleW = vpW / iW;
-        const scaleH = vpH / iH;
-        const fitScale = Math.min(scaleW, scaleH, 1);
-        return { width: iW * fitScale, height: iH * fitScale };
+      function applyTransform(){
+        overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
       }
-      function applyTransform(){ overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
+      function calcBaseRect(){
+        return overlayImg.getBoundingClientRect();
+      }
       function resetTransform(){
         scale = 1; tx = 0; ty = 0; applyTransform();
         overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out';
