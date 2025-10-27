@@ -5,18 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EMUDriverTraining — Markdown Viewer</title>
   <meta name="color-scheme" content="light dark" />
-  <!-- 使用外部樣式（含樹狀縮排、連續直線、圓點與折疊） -->
   <link rel="stylesheet" href="/styles.css">
   <style>
     :root{
-      /* 🔧 統一縮排參數 - 修改此值可調整所有層級的縮排 */
-      --list-indent: 2.5rem;
+      /* 清單字級（供 .section 標題與一般 li 使用） */
       --h-sub-font-size: 18px;
       --h-sub-line-height: 1.65;
       --h-sub-font-weight: 600;
     }
 
-    /* 針對圖片再加一點保護，確保不破壞縮排 */
+    /* 內文圖片保護，不破壞縮排 */
     .section-body img{
       display:block;
       max-width:100%;
@@ -27,37 +25,20 @@
     }
     .section-body li img{ margin-top:.25rem; }
 
-    /* 🔧 關鍵修改：統一所有層級的清單縮排 */
-    .section-body > ul,
-    .section-body > ol{
-      list-style-position: outside;
-      padding-left: var(--list-indent) !important;
-      margin-left: 0 !important;
-    }
-    .section-body ul ul,
-    .section-body ul ol,
-    .section-body ol ul,
-    .section-body ol ol{
-      padding-left: var(--list-indent) !important;
-      list-style-position: outside;
-      margin-left: 0 !important;
-    }
-    .section-body li { padding-left: 0 !important; }
-
-    /* 只包含一張圖片的清單項目：去圓點並回退一階 */
+    /* 只包含一張圖片的清單項目：去圓點並回退一階（兼容舊瀏覽器靠 class） */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
       padding-left: 0;
-      margin-left: calc(-1 * var(--list-indent));
+      margin-left: calc(-1 * var(--indent));
     }
     .section-body li.li-image-only{
       list-style: none;
       padding-left: 0;
-      margin-left: calc(-1 * var(--list-indent));
+      margin-left: calc(-1 * var(--indent));
     }
 
-    /* 讓文字型清單字級 = h3~h6 */
+    /* 讓文字型清單字級 = 副標題 */
     .section-body li.li-as-heading{
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
@@ -66,80 +47,40 @@
 
     /* ===== 圖片全螢幕（overlay） ===== */
     .img-overlay{
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0,0,0,.85);
-      z-index: 1000;
-      cursor: zoom-out;
-      overflow: hidden;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: none;
+      position: fixed; inset: 0; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(0,0,0,.85); z-index: 1000;
+      cursor: zoom-out; overflow: hidden;
+      -webkit-user-select: none; user-select: none; touch-action: none;
     }
     .img-overlay.open{ display: flex; }
-
     .img-overlay__viewport{
-      position: relative;
-      width: 95vw;
-      height: 95vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background: #000;
-      border-radius: 12px;
+      position: relative; width: 95vw; height: 95vh;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; background: #000; border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,.35);
     }
-
     .img-overlay__img{
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      will-change: transform;
-      cursor: zoom-in;
+      max-width: 100%; max-height: 100%; object-fit: contain;
+      will-change: transform; cursor: zoom-in;
     }
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
 
-    /* 讓偽 H7（role="heading"）在 section 樣式中被視為標題列 */
-    .section > h2,
-    .section > h3,
-    .section > h4,
-    .section > h5,
-    .section > h6,
+    /* section 標題列（含偽 heading） */
     .section > [role="heading"]{
-      display:flex;
-      align-items:center;
-      column-gap:.5rem;
-      margin: 0.35rem 0;
-      min-height: 28px;
+      display:flex; align-items:center; column-gap:.5rem;
+      margin: 0.35rem 0; min-height: 28px;
+      font-size: var(--h-sub-font-size);
+      line-height: var(--h-sub-line-height);
+      font-weight: var(--h-sub-font-weight);
     }
-    .section > h2::before,
-    .section > h3::before,
-    .section > h4::before,
-    .section > h5::before,
-    .section > h6::before,
     .section > [role="heading"]::before{
-      content:"";
-      flex:none;
-      display:inline-block;
-      width: var(--bullet-size);
-      height: var(--bullet-size);
-      border-radius: 50%;
-      background: var(--bullet);
-      margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + 2px);
+      content:""; flex:none; display:inline-block;
+      width: var(--bullet-size); height: var(--bullet-size);
+      border-radius: 50%; background: var(--bullet);
+      margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
       margin-right: .35rem;
-    }
-
-    /* 非 section 包覆的偽 H7 樣式（比照 h3/h4 的排版） */
-    .md-root :not(.section) > [role="heading"]{
-      font-size: 18px;
-      margin: 18px 0 8px;
-      font-weight: 600;
-      line-height: 1.5;
     }
 
     .section.no-rail::before{ display:none; }
@@ -149,7 +90,7 @@
   <div class="wrap">
     <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
-      <div class="muted">Markdown Viewer（基礎版）</div>
+      <div class="muted">Markdown Viewer（清單樹狀版）</div>
     </header>
 
     <article class="card">
@@ -163,7 +104,7 @@
     </article>
   </div>
 
-  <!-- 放大用的 overlay（預先放在 DOM，透過 class 切換） -->
+  <!-- 放大用 overlay -->
   <div class="img-overlay" id="imgOverlay" aria-hidden="true">
     <div class="img-overlay__viewport" id="imgViewport">
       <img class="img-overlay__img" id="imgOverlayImg" alt="">
@@ -196,33 +137,126 @@
         // 2) 將 ./images/* 或 images/* 改寫到 /content/images/*
         rewriteRelativeImages(root);
 
-        // 3) 把以 7 個以上 # 開頭的行，升級成「偽 H7」
-        promotePseudoHeadings(root);
+        // 3) 將 <ul>/<ol> 的 <li> 轉成 .section（收合按鈕＋標題＋內容）
+        listsToSections(root, { defaultCollapsed: true });
 
-        // 4) 標記「只含一張圖片」的 li（舊瀏覽器 fallback）
+        // 4) 標記「只含一張圖片」與「一般文字型」的 li（舊瀏覽器 fallback）
         markImageOnlyLis(root);
-
-        // 5) 自動折疊（H2~H7），預設全部收合（就算沒有子內容也顯示按鈕）
-        autoMakeCollapsible(root, { minLevel:2, maxLevel:7, defaultCollapsed:true });
-
-        // 6) 統一 h3~h6（含偽 H7）的字級到 h2 的計算樣式
-        unifyHeadingSizes(root);
-
-        // 7) 把 h3~h6（含偽 H7）的字級抓出來寫到 CSS 變數，供清單共用
-        captureHeadingTypography(root);
-
-        // 8) 任何「非圖片-only」的清單，都用和副標題一致的字級
         tagHeadingSizedLis(root);
 
-        // 9) 初次更新「是否要畫直線」（同層聯動）
+        // 5) 初次更新「是否畫導軌」（同層只有一個子節點 → 不畫）
         updateRailVisibility(root);
 
-        // 10) 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
+        // 6) 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
         enableImageFullscreen(root);
       }catch(err){
         showError('載入 Markdown 失敗：' + String(err));
         console.error(err);
       }
+    }
+
+    /* 把 <li> 轉成 .section：
+       - 計算 li 的深度（祖先 <ul>/<ol> 的層數）
+       - 取「第一段非清單內容」作為標題（其餘進 body）
+       - 無論有沒有子內容都放收合鈕 */
+    function listsToSections(container, { defaultCollapsed=false }={}){
+      const allLists = container.querySelectorAll('ul,ol');
+      if(!allLists.length) return;
+
+      // 逐層處理，從最裡面往外（避免父層被先替換破壞迭代）
+      const allLis = Array.from(container.querySelectorAll('li')).reverse();
+
+      allLis.forEach(li=>{
+        const depth = listDepth(li);
+        const wrap  = document.createElement('div');
+        wrap.className = 'section';
+        wrap.style.setProperty('--depth', depth);
+
+        // 產生標題列
+        const heading = document.createElement('div');
+        heading.setAttribute('role','heading');
+        heading.setAttribute('aria-level', String(Math.min(2 + depth, 7)));
+
+        // 收合按鈕（永遠顯示）
+        const btn = document.createElement('button');
+        btn.className = 'section-toggle';
+        heading.appendChild(btn);
+
+        // 把「直到遇到子清單（UL/OL）」之前的節點搬進標題，
+        // 子清單與其後的節點搬進 body
+        const body = document.createElement('div');
+        body.className = 'section-body';
+
+        const fragHead = document.createDocumentFragment();
+        const fragBody = document.createDocumentFragment();
+
+        let n = li.firstChild;
+        let metList = false;
+        while(n){
+          const next = n.nextSibling;
+          if(!metList && n.nodeType===1 && (n.tagName==='UL' || n.tagName==='OL')){
+            metList = true;
+          }
+          if(metList){
+            fragBody.appendChild(n);
+          }else{
+            fragHead.appendChild(n);
+          }
+          n = next;
+        }
+
+        // 若標題為空，給一個空白佔位避免按鈕孤立
+        if(!fragHead.childNodes.length){
+          const span = document.createElement('span');
+          span.textContent = '(空白節點)';
+          fragHead.appendChild(span);
+        }
+
+        heading.appendChild(fragHead);
+        body.appendChild(fragBody);
+
+        // 預設收合
+        const key = 'fold:li:' + normalizeText(heading.textContent);
+        const saved = loadState(key);
+        const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
+        if(startCollapsed) body.classList.add('collapsed');
+        setToggleVisual(btn, body.classList.contains('collapsed'));
+
+        btn.addEventListener('click', ()=>{
+          const nextCollapsed = !body.classList.contains('collapsed');
+          body.classList.toggle('collapsed', nextCollapsed);
+          setToggleVisual(btn, nextCollapsed);
+          saveState(key, nextCollapsed);
+          updateRailVisibility(container);
+        });
+
+        // 用 .section 取代原 <li>
+        wrap.appendChild(heading);
+        wrap.appendChild(body);
+        li.replaceWith(wrap);
+      });
+
+      // 清理：原本最外層的 UL/OL 可以保留做為語義容器（內部已是 .section）
+      // 也可以移除多餘的 list 樣式，交給 CSS 控制縮排與導軌
+      container.querySelectorAll('ul,ol').forEach(list=>{
+        list.classList.add('list-host');
+      });
+    }
+
+    function listDepth(li){
+      let depth = 0, p = li.parentElement;
+      while(p){
+        if(p.tagName==='UL' || p.tagName==='OL') depth++;
+        p = p.parentElement;
+      }
+      // li 自身所在的 list 才算第一層，做個回退
+      return Math.max(0, depth - 1);
+    }
+
+    function setToggleVisual(btn, collapsed){
+      btn.textContent = collapsed ? '▶' : '▼';
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      btn.title = collapsed ? '展開' : '收合';
     }
 
     /* 將 ./images/* 或 images/* 改寫到 /content/images/* */
@@ -238,61 +272,12 @@
       });
     }
 
-    /* ✅ 逐行將段落中以 7+ 個 # 開頭的行，轉成偽 H7（role="heading" aria-level=7）
-       - 允許行前有空白
-       - 一個 <p> 裡若有多行符合，會拆成多個 heading
-       - 其他非符合的行會保留成一般 <p> */
-    function promotePseudoHeadings(container){
-      const paras = container.querySelectorAll('p');
-      paras.forEach(p=>{
-        const raw = p.textContent;
-        if(!raw) return;
-
-        const lines = raw.split(/\r?\n/);
-        // 若全部都沒有以 ####### 開頭的行，略過
-        const hasAny = lines.some(line => /^\s*#{7,}\s+.+/.test(line));
-        if(!hasAny) return;
-
-        const frag = document.createDocumentFragment();
-        let buffer = [];
-
-        function flushBuffer(){
-          if(buffer.length){
-            const pp = document.createElement('p');
-            pp.textContent = buffer.join('\n');
-            frag.appendChild(pp);
-            buffer = [];
-          }
-        }
-
-        lines.forEach(line=>{
-          const m = line.match(/^\s*(#{7,})\s+(.+)$/);
-          if(m){
-            // 先把累積的普通文字吐出
-            flushBuffer();
-            const h = document.createElement('div');
-            h.setAttribute('role','heading');
-            h.setAttribute('aria-level','7'); // 7 或以上都歸 7
-            h.textContent = m[2].trim();
-            frag.appendChild(h);
-          }else{
-            buffer.push(line);
-          }
-        });
-        flushBuffer();
-
-        // 用 fragment 取代原 <p>
-        p.replaceWith(frag);
-      });
-    }
-
-    /* 標記只有一張圖片的 li，供舊瀏覽器使用（對齊 :has() 的條件） */
+    /* 標記只有一張圖片的 li（對齊 :has() 的條件） */
     function markImageOnlyLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
         const kids = Array.from(li.childNodes).filter(n => !(n.nodeType===3 && !n.textContent.trim()));
         let onlyImg = false;
-
         if(kids.length === 1 && kids[0].nodeType === 1){
           const el = kids[0];
           if(el.tagName === 'IMG'){
@@ -308,37 +293,6 @@
       });
     }
 
-    /* 統一 h3~h6 與偽 H7 的字級為 h2 的計算樣式 */
-    function unifyHeadingSizes(container){
-      const probeH2 = container.querySelector('h2');
-      if(!probeH2){ return; }
-      const cs = getComputedStyle(probeH2);
-      const fontSize   = cs.fontSize;
-      const lineHeight = cs.lineHeight;
-      const marginTop  = cs.marginTop;
-      const marginBottom = cs.marginBottom;
-      const fontWeight = cs.fontWeight;
-
-      container.querySelectorAll('h3,h4,h5,h6,[role="heading"][aria-level]').forEach(h=>{
-        h.style.fontSize   = fontSize;
-        h.style.lineHeight = lineHeight;
-        h.style.marginTop  = marginTop;
-        h.style.marginBottom = marginBottom;
-        h.style.fontWeight = fontWeight;
-      });
-    }
-
-    /* 讀取任一個 h3（或 h2）作為清單字級來源 */
-    function captureHeadingTypography(container){
-      const ref = container.querySelector('h3,h4,h5,h6,[role="heading"][aria-level]') || container.querySelector('h2');
-      if(!ref) return;
-      const cs = getComputedStyle(ref);
-      const root = document.documentElement;
-      root.style.setProperty('--h-sub-font-size', cs.fontSize);
-      root.style.setProperty('--h-sub-line-height', cs.lineHeight);
-      root.style.setProperty('--h-sub-font-weight', cs.fontWeight);
-    }
-
     /* 讓「非圖片-only」的 li 用 .li-as-heading 標記，套用副標題字級 */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('.section-body li');
@@ -348,23 +302,19 @@
       });
     }
 
-    /* 更新每個 section 的 "是否要畫直線"（同層只有一個 heading = 孤立 => .no-rail） */
+    /* 更新每個 section 的「是否要畫直線」：同層只有一個則不畫（較乾淨） */
     function updateRailVisibility(container){
       const allSec = container.querySelectorAll('.section');
       allSec.forEach(sec=>{
-        const lv = levelOf(sec.firstElementChild);
         const parent = sec.parentElement;
-        const sibs = Array.from(parent.children).filter(el=>el.classList.contains('section'));
-        const sameLv = sibs.filter(s=>{
-          const h = s.firstElementChild;
-          return h && levelOf(h)===lv;
-        });
-        const isAlone = (sameLv.length===1);
+        if(!parent) return;
+        const sameLevelSiblings = Array.from(parent.children).filter(el=>el.classList && el.classList.contains('section'));
+        const isAlone = (sameLevelSiblings.length===1);
         sec.classList.toggle('no-rail', isAlone);
       });
     }
 
-    /* 點擊圖片 -> overlay 全螢幕 + 滾輪縮放/拖曳 */
+    /* 圖片全螢幕＋縮放拖曳 */
     function enableImageFullscreen(container){
       const overlay    = document.getElementById('imgOverlay');
       const viewport   = document.getElementById('imgViewport');
@@ -387,237 +337,55 @@
         const fitScale = Math.min(scaleW, scaleH, 1);
         return { width: iW * fitScale, height: iH * fitScale };
       }
-
-      function applyTransform(){
-        overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
-      }
-
+      function applyTransform(){ overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
       function resetTransform(){
-        scale = 1; tx = 0; ty = 0;
-        applyTransform();
-        overlayImg.classList.remove('grabbable','grabbing');
-        overlay.style.cursor = 'zoom-out';
+        scale = 1; tx = 0; ty = 0; applyTransform();
+        overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out';
       }
-
       function clampPan(){
-        const vpW = viewport.clientWidth;
-        const vpH = viewport.clientHeight;
+        const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
         const imgW = baseRect ? baseRect.width  : overlayImg.getBoundingClientRect().width / scale;
         const imgH = baseRect ? baseRect.height : overlayImg.getBoundingClientRect().height / scale;
-
-        const scaledW = imgW * scale;
-        const scaledH = imgH * scale;
-
-        const maxX = Math.max(0, (scaledW - vpW) / 2);
-        const maxY = Math.max(0, (scaledH - vpH) / 2);
-
-        if(maxX === 0) tx = 0; else tx = Math.max(-maxX, Math.min(maxX, tx));
-        if(maxY === 0) ty = 0; else ty = Math.max(-maxY, Math.min(maxY, ty));
+        const scaledW = imgW * scale, scaledH = imgH * scale;
+        const maxX = Math.max(0, (scaledW - vpW) / 2), maxY = Math.max(0, (scaledH - vpH) / 2);
+        tx = maxX===0 ? 0 : Math.max(-maxX, Math.min(maxX, tx));
+        ty = maxY===0 ? 0 : Math.max(-maxY, Math.min(maxY, ty));
       }
-
       function zoomAt(clientX, clientY, deltaY){
         const zoomFactor = Math.exp(-deltaY * 0.002);
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
         if(newScale === scale) return;
-
         const vpRect = viewport.getBoundingClientRect();
         const offsetX = clientX - (vpRect.left + vpRect.width/2);
         const offsetY = clientY - (vpRect.top  + vpRect.height/2);
-
-        const imgToCursorX = offsetX - tx;
-        const imgToCursorY = offsetY - ty;
-
+        const imgToCursorX = offsetX - tx, imgToCursorY = offsetY - ty;
         const ratio = newScale / scale;
         tx = offsetX - imgToCursorX * ratio;
         ty = offsetY - imgToCursorY * ratio;
-
-        scale = newScale;
-        clampPan();
-        applyTransform();
-
-        if(scale > 1){
-          overlayImg.classList.add('grabbable');
-          overlay.style.cursor = 'default';
-        }else{
-          overlayImg.classList.remove('grabbable','grabbing');
-          overlay.style.cursor = 'zoom-out';
-        }
+        scale = newScale; clampPan(); applyTransform();
+        if(scale > 1){ overlayImg.classList.add('grabbable'); overlay.style.cursor = 'default'; }
+        else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }
-
       function openOverlay(img){
-        overlayImg.src = img.currentSrc || img.src;
-        overlayImg.alt = img.alt || '';
-        overlay.classList.add('open');
-        overlay.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-
-        if(overlayImg.complete){
-          baseRect = calcBaseRect();
-        }else{
-          overlayImg.onload = ()=>{ baseRect = calcBaseRect(); };
-        }
+        overlayImg.src = img.currentSrc || img.src; overlayImg.alt = img.alt || '';
+        overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden';
+        if(overlayImg.complete){ baseRect = calcBaseRect(); } else { overlayImg.onload = ()=>{ baseRect = calcBaseRect(); }; }
         resetTransform();
       }
-
       function closeOverlay(){
-        overlay.classList.remove('open');
-        overlay.setAttribute('aria-hidden', 'true');
-        overlayImg.src = '';
-        document.body.style.overflow = '';
+        overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true');
+        overlayImg.src = ''; document.body.style.overflow = '';
       }
-
-      container.addEventListener('click', (e)=>{
-        const img = e.target.closest('img');
-        if(!img) return;
-        openOverlay(img);
-      });
-
-      overlay.addEventListener('click', (e)=>{
-        if(e.target === overlay){
-          closeOverlay();
-        }
-      });
-
-      window.addEventListener('keydown', (e)=>{
-        if(e.key === 'Escape' && overlay.classList.contains('open')){
-          closeOverlay();
-        }
-      });
-
-      overlay.addEventListener('wheel', (e)=>{
-        e.preventDefault();
-        const deltaY = e.deltaY * (e.ctrlKey ? 0.5 : 1);
-        zoomAt(e.clientX, e.clientY, deltaY);
-      }, { passive: false });
-
-      overlayImg.addEventListener('dblclick', (e)=>{
-        e.preventDefault();
-        if(scale === 1){
-          const fakeDelta = Math.log(2/scale)/(-0.002);
-          zoomAt(e.clientX, e.clientY, fakeDelta);
-        }else{
-          resetTransform();
-        }
-      });
-
-      overlayImg.addEventListener('pointerdown', (e)=>{
-        if(scale <= 1) return;
-        e.preventDefault();
-        dragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        overlayImg.setPointerCapture(e.pointerId);
-        overlayImg.classList.add('grabbing');
-      });
-      overlayImg.addEventListener('pointermove', (e)=>{
-        if(!dragging) return;
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        tx += dx;
-        ty += dy;
-        clampPan();
-        applyTransform();
-      });
-      const endDrag = (e)=>{
-        if(!dragging) return;
-        dragging = false;
-        overlayImg.classList.remove('grabbing');
-        try{ overlayImg.releasePointerCapture(e.pointerId); }catch(_){}
-      };
-      overlayImg.addEventListener('pointerup', endDrag);
-      overlayImg.addEventListener('pointercancel', endDrag);
+      container.addEventListener('click', (e)=>{ const img = e.target.closest('img'); if(img) openOverlay(img); });
+      overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeOverlay(); });
+      window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
+      overlay.addEventListener('wheel', (e)=>{ e.preventDefault(); const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1); zoomAt(e.clientX, e.clientY, dy); }, { passive: false });
+      overlayImg.addEventListener('dblclick', (e)=>{ e.preventDefault(); if(scale === 1){ const fakeDelta = Math.log(2/scale)/(-0.002); zoomAt(e.clientX, e.clientY, fakeDelta); } else { resetTransform(); } });
+      overlayImg.addEventListener('pointerdown', (e)=>{ if(scale <= 1) return; e.preventDefault(); dragging = true; lastX = e.clientX; lastY = e.clientY; overlayImg.setPointerCapture(e.pointerId); overlayImg.classList.add('grabbing'); });
+      overlayImg.addEventListener('pointermove', (e)=>{ if(!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; tx += dx; ty += dy; clampPan(); applyTransform(); });
+      const endDrag = (e)=>{ if(!dragging) return; dragging = false; overlayImg.classList.remove('grabbing'); try{ overlayImg.releasePointerCapture(e.pointerId); }catch(_){} };
+      overlayImg.addEventListener('pointerup', endDrag); overlayImg.addEventListener('pointercancel', endDrag);
     }
-
-    /* 自動折疊 + 設定縮排深度（H2~H7）
-       🔧 關鍵：就算該標題後沒有子內容，也一律建立 .section-body 並插入收合按鈕 */
-    function autoMakeCollapsible(container, {minLevel=2, maxLevel=7, defaultCollapsed=false} = {}){
-      const headSel   = 'h2,h3,h4,h5,h6,[role="heading"][aria-level]';
-      const allHeads  = Array.from(container.querySelectorAll(headSel));
-      const headings  = allHeads.filter(h => levelOf(h) >= minLevel && levelOf(h) <= maxLevel);
-
-      for (let i = headings.length - 1; i >= 0; i--) {
-        const h = headings[i];
-        if (h.parentElement && h.parentElement.classList.contains('section')) continue;
-
-        const curLv    = levelOf(h);
-        const depth    = Math.max(0, curLv - minLevel); // H2=0,... H7=5
-        const bodyFrag = document.createDocumentFragment();
-
-        // 收集 body：直到遇到同級或更上層的下一個 heading/section
-        let n = h.nextSibling;
-        while (n) {
-          const isEl = n.nodeType === 1;
-          if (isEl && isHeadingEl(n)) {
-            const lv = levelOf(n);
-            if (lv <= curLv) break;
-          }
-          if (isEl && n.classList.contains('section')) {
-            const first = n.firstElementChild;
-            if (first && isHeadingEl(first)) {
-              const lv = levelOf(first);
-              if (lv <= curLv) break;
-            }
-          }
-          const next = n.nextSibling;
-          bodyFrag.appendChild(n);
-          n = next;
-        }
-
-        // 包裝為 .section（不論是否有子內容，都建立 body + 按鈕）
-        const wrap = document.createElement('div');
-        wrap.className = 'section';
-        wrap.style.setProperty('--depth', depth);
-        h.parentNode.insertBefore(wrap, h);
-        wrap.appendChild(h);
-
-        const body = document.createElement('div');
-        body.className = 'section-body';
-        body.appendChild(bodyFrag);
-        wrap.appendChild(body);
-
-        const key = 'fold:' + curLv + ':' + normalizeText(h.textContent);
-        const saved = loadState(key);
-        const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
-        if (startCollapsed) body.classList.add('collapsed');
-
-        const btn = document.createElement('button');
-        btn.className = 'section-toggle';
-        setToggleVisual(btn, body.classList.contains('collapsed'));
-        btn.addEventListener('click', () => {
-          const nextCollapsed = !body.classList.contains('collapsed');
-          body.classList.toggle('collapsed', nextCollapsed);
-          setToggleVisual(btn, nextCollapsed);
-          saveState(key, nextCollapsed);
-          updateRailVisibility(container);
-        });
-        h.insertBefore(btn, h.firstChild);
-      }
-    }
-
-    function setToggleVisual(btn, collapsed){
-      btn.textContent = collapsed ? '▶' : '▼';
-      btn.setAttribute('aria-expanded', String(!collapsed));
-      btn.title = collapsed ? '展開' : '收合';
-    }
-    function isHeadingEl(el){
-      if(!el) return false;
-      if(el.tagName && /^H[2-6]$/.test(el.tagName)) return true;
-      if(el.getAttribute && el.getAttribute('role') === 'heading'){
-        const lv = parseInt(el.getAttribute('aria-level'), 10);
-        return lv >= 2 && lv <= 7;
-      }
-      return false;
-    }
-    function levelOf(hEl){
-      if(hEl.getAttribute && hEl.getAttribute('role') === 'heading'){
-        const lv = parseInt(hEl.getAttribute('aria-level'), 10);
-        if(Number.isFinite(lv)) return lv;
-      }
-      return parseInt(hEl.tagName.slice(1),10);
-    }
-    function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
     /* Frontmatter 解析 */
     function parseFrontmatter(src){
@@ -647,6 +415,7 @@
         return v==null ? null : JSON.parse(v);
       }catch(e){ return null; }
     }
+    function normalizeText(s){ return (s||'').replace(/\s+/g,'').trim(); }
 
     function showError(msg){
       root.innerHTML = '<pre style="white-space:pre-wrap;background:#0001;padding:12px;border-radius:8px">'+msg+'</pre>';

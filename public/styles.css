@@ -25,8 +25,8 @@
   --rail:#dbe1f1;           /* 直線顏色（亮） */
   --bullet:#6b778d;         /* 實心點顏色（亮） */
 
-  /* 🔧 追加：圓點水平微調（負值往左、正值往右） */
-  --bullet-nudge-x: +1px;    /* 原本是 +2px；改成 0px = 向左 2px */
+  /* 圓點水平微調（負值往左、正值往右） */
+  --bullet-nudge-x: +1px;
 }
 
 @media (prefers-color-scheme: dark){
@@ -41,13 +41,13 @@
 
 html,body{height:100%}
 body{
-margin:0;
-color:var(--fg);
-font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif;
-background:#fff;
+  margin:0;
+  color:var(--fg);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans TC",sans-serif;
+  background:#fff;
 }
 @media (prefers-color-scheme: dark){
-body{ background:linear-gradient(180deg,var(--bg),#0f131d); }
+  body{ background:linear-gradient(180deg,var(--bg),#0f131d); }
 }
 
 .wrap{ max-width:var(--maxw); margin:0 auto; padding:20px 16px 60px; }
@@ -58,125 +58,99 @@ body{ background:linear-gradient(180deg,var(--bg),#0f131d); }
 
 /* 卡片容器 */
 .card{
-background:#fff;
-border:1px solid #e6e8ef;
-border-radius:var(--radius);
-box-shadow:0 10px 30px rgba(0,0,0,.06);
-overflow:hidden;
+  background:#fff;
+  border:1px solid #e6e8ef;
+  border-radius:var(--radius);
+  box-shadow:0 10px 30px rgba(0,0,0,.06);
+  overflow:hidden;
 }
 @media (prefers-color-scheme: dark){
-.card{ background:var(--panel); border-color:var(--line); }
+  .card{ background:var(--panel); border-color:var(--line); }
 }
 .content{ padding:18px; }
 
 /* Markdown 文字排版（精簡） */
 .md-root h1{ font-size:28px; margin:12px 0 14px; }
-.md-root h2{ font-size:22px; margin:26px 0 10px; padding-top:6px; border-top:1px solid #0002; }
-.md-root h3{ font-size:18px; margin:18px 0 8px; }
 .md-root p{ margin:10px 0; }
 .md-root img{ max-width:100%; height:auto; display:block; margin:10px auto; border-radius:8px; }
 pre{ background:#0001; padding:12px; border-radius:8px; }
 
+/* 取消瀏覽器預設清單縮排，交給 .section 控制縮排 */
+.md-root ul, .md-root ol{
+  list-style-position: outside;
+  padding-left: 0;
+  margin-left: 0;
+}
+
 /* ===========================
- Roam 風樹狀：連貫直線＋實心點＋縮排
- =========================== */
+   Roam 風樹狀：連貫直線＋實心點＋縮排（針對 .section）
+   =========================== */
 
-/* section 由 JS 包裝：每個可折疊章節一個 .section
- JS 會在 .section 上設定自訂屬性 style="--depth:N" */
+/* .section 由 JS 包裝：每個可折疊節點一個 .section
+   JS 會在 .section 上設定 style="--depth:N" */
 .section{
-position: relative;
-/* 🔧 修改：所有層級使用固定縮排，不再依 depth 倍增 */
---_pad: calc(var(--indent) + var(--gutter));
-padding-left: var(--_pad);
+  position: relative;
+  /* 固定縮排（每層加 var(--indent)） */
+  padding-left: calc((var(--depth, 0) * var(--indent)) + var(--gutter));
 }
 
-/* 連接直線：每一個 section 自己畫一條，因為有縮排，
- 巢狀會自然形成多條並保持連續（不受文字換行影響） */
+/* 左側導軌（rail），由父子疊加形成連續效果 */
 .section::before{
-content:"";
-position:absolute;
-/* 直線位置：位於圖示區最左側（對齊樹狀軸） */
-left: calc(var(--_pad) - var(--gutter) / 2);
-top: -12px;
-bottom: -12px;
-width: var(--rail-w);
-background: var(--rail);
-pointer-events: none;
-z-index: 0;
+  content:"";
+  position:absolute;
+  left: calc((var(--depth, 0) * var(--indent)) + var(--gutter)/2 - var(--rail-w)/2);
+  top: -12px;
+  bottom: -12px;
+  width: var(--rail-w);
+  background: var(--rail);
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* H2~H6 作為樹狀項目標題：使用 Flex 以便放「實心點」與「三角形」 */
-.section > h2,
-.section > h3,
-.section > h4,
-.section > h5,
-.section > h6{
-display:flex;
-align-items:center;
-column-gap:.5rem;
-margin: 0.35rem 0;
-min-height: 28px; /* 讓行高穩定，直線在短行也不會斷 */
+/* 標題列（由 JS 產生的 role=heading），在 index.html 內的 <style> 已補字級設定 */
+.section > [role="heading"]{
+  position: relative;
+  z-index: 1;
 }
 
-/* --- 實心點（對齊的圓點）：使用 ::before，永遠在最左側，與樹狀軸對齊 --- */
-.section > h2::before,
-.section > h3::before,
-.section > h4::before,
-.section > h5::before,
-.section > h6::before{
-content:"";
-flex:none;
-display:inline-block;
-width: var(--bullet-size);
-height: var(--bullet-size);
-border-radius: 50%;
-background: var(--bullet);
-/* 原：calc(-1 * (var(--gutter) - var(--bullet-size)) + 2px)
-   調整：把 +2px 改為 0px（= 向左 2px）
-   並改成用變數 --bullet-nudge-x，往後好調整 */
-margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
-margin-right: .35rem;
-position: relative;
-z-index: 1; 
-}
-
-/* --- 收合/展開按鈕（小三角形）— 由 JS 插入 <button class="section-toggle"> --- */
+/* 收合/展開按鈕（小三角形）— 由 JS 插入 <button class="section-toggle"> */
 .section-toggle{
-flex:none;
-border:1px solid var(--line);
-background:#f6f7fb;
-padding: 0 .45rem;
-border-radius:6px;
-cursor:pointer;
-font-size:12px;
-line-height:20px;
-user-select:none;
-display:inline-flex; align-items:center; justify-content:center;
-min-width: 2ch;
-margin-right: .25rem;
+  flex:none;
+  border:1px solid var(--line);
+  background:#f6f7fb;
+  padding: 0 .45rem;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  line-height:20px;
+  user-select:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width: 2ch;
+  margin-right: .25rem;
 }
 @media (prefers-color-scheme: dark){
-.section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:var(--fg-invert); }
+  .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:var(--fg-invert); }
 }
 
 /* 內容收合狀態（JS 會切換 .collapsed） */
 .section-body.collapsed{ display:none; }
 
-/* 讓最外層（depth=0）也有清楚的左邊界，但不畫圓點前的線段過粗 */
+/* 讓最外層（depth=0）導軌兩端有些留白 */
 .section[style*="--depth: 0"]::before{
-background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
+  background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
 }
 
-/* 針對長段落、換行時保持左側直線連續感：標題下面的內容區塊 */
+/* 內容區塊一致的上下距 */
 .section-body > *{ margin-block: .35rem .35rem; }
 
 /* 讓圖像不會壓到左側樹狀區；若需要也可以取消這行 */
 .section-body img{ margin-left: .25rem; }
 
-/* 內文中普通 H2~H6（沒有被包成 section 的）仍維持一般樣式 */
-.md-root :not(.section) > h2{ font-size:22px; margin:26px 0 10px; padding-top:6px; border-top:1px solid #0002; }
-.md-root :not(.section) > h3{ font-size:18px; margin:18px 0 8px; }
+/* 內文中的清單（仍是原生 ul/ol）在 body 中每層各加一階縮排 */
+.section-body ul, .section-body ol{
+  padding-left: var(--indent);
+}
 
-/* 連結風格（可加可不加） */
+/* 連結風格 */
 .md-root a{ color:var(--accent); text-decoration:none; }
 .md-root a:hover{ text-decoration:underline; }
