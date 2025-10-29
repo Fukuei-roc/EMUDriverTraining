@@ -74,13 +74,24 @@
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
       font-weight: var(--h-sub-font-weight);
+      cursor: pointer;                 /* 點標題即可展開/收合 */
+      user-select: none;
     }
     .section > [role="heading"]::before{
       content:""; flex:none; display:inline-block;
       width: var(--bullet-size); height: var(--bullet-size);
-      border-radius: 50%; background: var(--bullet);
+      border-radius: 50%;
+      box-sizing: border-box;           /* 保持外徑一致 */
       margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
       margin-right: .35rem;
+      /* 預設實心；有子節點時會被覆蓋為空心 */
+      background: var(--bullet);
+      border: 2px solid transparent;
+    }
+    /* 有子層級＝空心圓點（外徑與實心相同） */
+    .section.has-children > [role="heading"]::before{
+      background: transparent;
+      border-color: var(--bullet);
     }
 
     .section.no-rail::before{ display:none; }
@@ -137,7 +148,7 @@
         // 2) 將 ./images/* 或 images/* 改寫到 /content/images/*
         rewriteRelativeImages(root);
 
-        // 3) 將 <ul>/<ol> 的 <li> 轉成 .section（收合按鈕＋標題＋內容）
+        // 3) 將 <ul>/<ol> 的 <li> 轉成 .section（取消按鈕；點標題展開）
         listsToSections(root, { defaultCollapsed: true });
 
         // 4) 標記「只含一張圖片」與「一般文字型」的 li（舊瀏覽器 fallback）
@@ -155,115 +166,99 @@
       }
     }
 
-    /* ✨ 修正：計算 li 的真實層級深度 */
+    /* 計算 li 的真實層級深度 */
     function listDepth(li){
       let depth = 0;
       let current = li.parentElement;
-      
-      // 向上遍歷，只計算 UL/OL 的數量
       while(current && current !== root){
         if(current.tagName === 'UL' || current.tagName === 'OL'){
           depth++;
         }
         current = current.parentElement;
       }
-      
-      // 減1是因為最外層的 list 不算深度
       return Math.max(0, depth - 1);
     }
 
-    /* 把 <li> 轉成 .section：
-       - 計算 li 的深度（祖先 <ul>/<ol> 的層數）
-       - 取「第一段非清單內容」作為標題（其餘進 body）
-       - 無論有沒有子內容都放收合鈕 */
+    /* 把 <li> 轉成 .section */
     function listsToSections(container, { defaultCollapsed=false }={}){
-      const allLists = container.querySelectorAll('ul,ol');
-      if(!allLists.length) return;
-
-      // 逐層處理，從最裡面往外（避免父層被先替換破壞迭代）
       const allLis = Array.from(container.querySelectorAll('li')).reverse();
-
       allLis.forEach(li=>{
         const depth = listDepth(li);
         const wrap  = document.createElement('div');
         wrap.className = 'section';
         wrap.style.setProperty('--depth', depth);
 
-        // 產生標題列
         const heading = document.createElement('div');
         heading.setAttribute('role','heading');
         heading.setAttribute('aria-level', String(Math.min(2 + depth, 7)));
+        heading.setAttribute('tabindex', '0'); // 可鍵盤操作
 
-        // 收合按鈕（永遠顯示）
-        const btn = document.createElement('button');
-        btn.className = 'section-toggle';
-        heading.appendChild(btn);
-
-        // 把「直到遇到子清單（UL/OL）」之前的節點搬進標題，
-        // 子清單與其後的節點搬進 body
         const body = document.createElement('div');
         body.className = 'section-body';
 
+        // 拆分標題與內容
         const fragHead = document.createDocumentFragment();
         const fragBody = document.createDocumentFragment();
-
-        let n = li.firstChild;
-        let metList = false;
+        let n = li.firstChild, metList = false;
         while(n){
           const next = n.nextSibling;
           if(!metList && n.nodeType===1 && (n.tagName==='UL' || n.tagName==='OL')){
             metList = true;
           }
-          if(metList){
-            fragBody.appendChild(n);
-          }else{
-            fragHead.appendChild(n);
-          }
+          (metList ? fragBody : fragHead).appendChild(n);
           n = next;
         }
-
-        // 若標題為空，給一個空白佔位避免按鈕孤立
         if(!fragHead.childNodes.length){
           const span = document.createElement('span');
           span.textContent = '(空白節點)';
           fragHead.appendChild(span);
         }
-
         heading.appendChild(fragHead);
         body.appendChild(fragBody);
 
-        // 預設收合
+        // 預設收合（可記憶）
         const key = 'fold:li:' + normalizeText(heading.textContent);
         const saved = loadState(key);
         const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
         if(startCollapsed) body.classList.add('collapsed');
-        setToggleVisual(btn, body.classList.contains('collapsed'));
+        heading.setAttribute('aria-expanded', String(!startCollapsed));
 
-        btn.addEventListener('click', ()=>{
-          const nextCollapsed = !body.classList.contains('collapsed');
-          body.classList.toggle('collapsed', nextCollapsed);
-          setToggleVisual(btn, nextCollapsed);
-          saveState(key, nextCollapsed);
-          updateRailVisibility(container);
-        });
-
-        // 用 .section 取代原 <li>
+        // 先把 wrap 放好，再偵測有無子節點（子層的 .section 已先轉好，因為我們 reverse）
         wrap.appendChild(heading);
         wrap.appendChild(body);
         li.replaceWith(wrap);
+
+        /* 🔧 修正：偵測任意後代 .section（而非僅直屬）
+           以正確判斷有無子層級 → 控制空心/實心圓點 */
+        const hasChildren = !!body.querySelector('.section');
+        wrap.classList.toggle('has-children', hasChildren);
+        wrap.classList.toggle('is-leaf', !hasChildren);
+
+        // 點擊標題列即可展開/收合
+        const toggle = ()=>{
+          const nextCollapsed = !body.classList.contains('collapsed');
+          body.classList.toggle('collapsed', nextCollapsed);
+          heading.setAttribute('aria-expanded', String(!nextCollapsed));
+          saveState(key, nextCollapsed);
+          updateRailVisibility(container);
+        };
+        heading.addEventListener('click', toggle);
+        heading.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault(); toggle();
+          }
+          if(e.key === 'ArrowRight' && body.classList.contains('collapsed')){
+            e.preventDefault(); toggle();
+          }
+          if(e.key === 'ArrowLeft' && !body.classList.contains('collapsed')){
+            e.preventDefault(); toggle();
+          }
+        });
       });
 
-      // 清理：原本最外層的 UL/OL 可以保留做為語義容器（內部已是 .section）
-      // 也可以移除多餘的 list 樣式，交給 CSS 控制縮排與導軌
       container.querySelectorAll('ul,ol').forEach(list=>{
         list.classList.add('list-host');
       });
-    }
-
-    function setToggleVisual(btn, collapsed){
-      btn.textContent = collapsed ? '▶' : '▼';
-      btn.setAttribute('aria-expanded', String(!collapsed));
-      btn.title = collapsed ? '展開' : '收合';
     }
 
     /* 將 ./images/* 或 images/* 改寫到 /content/images/* */

@@ -17,15 +17,15 @@
   --radius:14px;
   --maxw:980px;
 
-  /* ✨ 統一縮排參數：調整這個值即可改變所有層級的縮排寬度 */
+  /* 統一縮排參數 */
   --indent: 28px;           /* 每一層的統一縮排寬度 */
   
   /* 折疊樹狀視覺 */
-  --gutter: 20px;           /* 子彈 + 三角形 的作用區寬 */
+  --gutter: 20px;           /* 左側作用區寬 */
   --rail-w: 1.5px;          /* 連接直線寬度 */
-  --bullet-size: 6px;       /* 實心點直徑 */
+  --bullet-size: 8px;       /* 空心/實心點的外徑（兩者相同） */
   --rail: #dbe1f1;          /* 直線顏色（亮） */
-  --bullet: #6b778d;        /* 實心點顏色（亮） */
+  --bullet: #6b778d;        /* 點顏色（亮） */
 
   /* 圓點水平微調（負值往左、正值往右） */
   --bullet-nudge-x: +1px;
@@ -54,7 +54,7 @@ body{
 
 .wrap{ max-width:var(--maxw); margin:0 auto; padding:20px 16px 60px; }
 
-/* 可依需求繼續隱藏頁首與標題列 */
+/* 可依需求隱藏頁首與標題列 */
 .hdr{ display:none; }
 .titlebar{ display:none; }
 
@@ -85,17 +85,15 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 }
 
 /* ===========================
-   Roam 風樹狀：連貫直線＋實心點＋統一縮排（針對 .section）
+   Roam 風樹狀：連貫直線＋空心/實心點＋統一縮排
    =========================== */
 
 /* .section 由 JS 包裝：每個可折疊節點一個 .section
-   JS 會在 .section 上設定 style="--depth:N" 
-   關鍵：使用 margin-left 而非 padding-left，避免內部 ul/ol 的累加問題 */
+   JS 會在 .section 上設定 style="--depth:N"
+   使用 margin-left 以固定每層距離，不讓 ul/ol 自己疊加 */
 .section{
   position: relative;
-  /* ✨ 使用 margin-left 確保每層都是純粹的固定距離增量 */
   margin-left: var(--indent);
-  /* 統一的內部填充，給按鈕和圓點留出空間 */
   padding-left: var(--gutter);
 }
 
@@ -104,11 +102,10 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   margin-left: 0;
 }
 
-/* 左側導軌（rail），固定在左側 */
+/* 左側導軌（rail） */
 .section::before{
   content:"";
   position:absolute;
-  /* 導軌固定在左邊界往右 gutter/2 的位置 */
   left: calc(var(--gutter)/2 - var(--rail-w)/2);
   top: -12px;
   bottom: -12px;
@@ -118,35 +115,16 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   z-index: 0;
 }
 
-/* 標題列（由 JS 產生的 role=heading），在 index.html 內的 <style> 已補字級設定 */
+/* 標題列的版面（heading 的字級在 index.html 的 <style> 中設定） */
 .section > [role="heading"]{
   position: relative;
   z-index: 1;
 }
 
-/* 收合/展開按鈕（小三角形）— 由 JS 插入 <button class="section-toggle"> */
-.section-toggle{
-  flex:none;
-  border:1px solid var(--line);
-  background:#f6f7fb;
-  padding: 0 .45rem;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:12px;
-  line-height:20px;
-  user-select:none;
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width: 2ch;
-  margin-right: .25rem;
-}
-@media (prefers-color-scheme: dark){
-  .section-toggle{ background:#1a1f2b; border-color:#2a2f3d; color:var(--fg-invert); }
-}
-
 /* 內容收合狀態（JS 會切換 .collapsed） */
 .section-body.collapsed{ display:none; }
 
-/* 讓最外層（depth=0）導軌兩端有些留白 */
+/* 讓最外層導軌兩端有些留白漸層 */
 .section[style*="--depth: 0"]::before{
   background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
 }
@@ -154,18 +132,17 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 /* 內容區塊一致的上下距 */
 .section-body > *{ margin-block: .35rem .35rem; }
 
-/* 讓圖像不會壓到左側樹狀區；若需要也可以取消這行 */
+/* 讓圖像不會壓到左側樹狀區 */
 .section-body img{ margin-left: .25rem; }
 
-/* ✨ 關鍵修正：section-body 內的 ul/ol 不要有 padding-left 
-   因為每個 li 會被轉成 .section，而 .section 已經有 margin-left 了 */
+/* section-body 內的 ul/ol 不要再縮排，因為 li 會被轉成 .section */
 .section-body ul, .section-body ol{
   padding-left: 0;
   margin-left: 0;
-  list-style: none;  /* 移除預設的 list style */
+  list-style: none;
 }
 
-/* 如果 section-body 內還有原生的 li（未被轉換的），給予縮排 */
+/* 如果 section-body 內仍有原生 li（理論上不會），給予縮排避免貼齊 */
 .section-body li{
   margin-left: var(--indent);
 }
