@@ -102,7 +102,7 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   margin-left: 0;
 }
 
-/* 左側導軌（rail） */
+/* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示 */
 .section::before{
   content:"";
   position:absolute;
@@ -113,6 +113,10 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   background: var(--rail);
   pointer-events: none;
   z-index: 0;
+  display: none;                             /* 預設不顯示 */
+}
+.section.expanded.has-children::before{      /* ✨ 展開 + 有子層級 → 顯示 */
+  display: block;
 }
 
 /* 標題列的版面（heading 的字級在 index.html 的 <style> 中設定） */
@@ -124,8 +128,8 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 /* 內容收合狀態（JS 會切換 .collapsed） */
 .section-body.collapsed{ display:none; }
 
-/* 讓最外層導軌兩端有些留白漸層 */
-.section[style*="--depth: 0"]::before{
+/* 讓最外層導軌兩端有些留白漸層（僅在顯示時套用） */
+.section.expanded[style*="--depth: 0"]::before{
   background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
 }
 

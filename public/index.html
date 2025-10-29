@@ -155,7 +155,7 @@
         markImageOnlyLis(root);
         tagHeadingSizedLis(root);
 
-        // 5) 初次更新「是否畫導軌」（同層只有一個子節點 → 不畫）
+        // 5) 初次更新「是否畫導軌」
         updateRailVisibility(root);
 
         // 6) 啟用圖片點擊全螢幕 + 滾輪縮放/拖曳
@@ -216,29 +216,33 @@
         heading.appendChild(fragHead);
         body.appendChild(fragBody);
 
-        // 預設收合（可記憶）
-        const key = 'fold:li:' + normalizeText(heading.textContent);
-        const saved = loadState(key);
-        const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
-        if(startCollapsed) body.classList.add('collapsed');
-        heading.setAttribute('aria-expanded', String(!startCollapsed));
-
-        // 先把 wrap 放好，再偵測有無子節點（子層的 .section 已先轉好，因為我們 reverse）
+        // 先把 wrap 放好，再偵測有無子節點
         wrap.appendChild(heading);
         wrap.appendChild(body);
         li.replaceWith(wrap);
 
-        /* 🔧 修正：偵測任意後代 .section（而非僅直屬）
-           以正確判斷有無子層級 → 控制空心/實心圓點 */
         const hasChildren = !!body.querySelector('.section');
         wrap.classList.toggle('has-children', hasChildren);
         wrap.classList.toggle('is-leaf', !hasChildren);
+
+        // 預設收合（可記憶），並同步 expanded 狀態
+        const key = 'fold:li:' + normalizeText(heading.textContent);
+        const saved = loadState(key);
+        const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
+        if(startCollapsed){
+          body.classList.add('collapsed');
+          wrap.classList.remove('expanded');
+        }else{
+          wrap.classList.add('expanded');
+        }
+        heading.setAttribute('aria-expanded', String(!startCollapsed));
 
         // 點擊標題列即可展開/收合
         const toggle = ()=>{
           const nextCollapsed = !body.classList.contains('collapsed');
           body.classList.toggle('collapsed', nextCollapsed);
           heading.setAttribute('aria-expanded', String(!nextCollapsed));
+          wrap.classList.toggle('expanded', !nextCollapsed);   // ✨ 同步 expanded 狀態
           saveState(key, nextCollapsed);
           updateRailVisibility(container);
         };
