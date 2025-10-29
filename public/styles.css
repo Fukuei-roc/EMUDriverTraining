@@ -21,7 +21,7 @@
   --indent: 28px;           /* 每一層的統一縮排寬度 */
   
   /* 折疊樹狀視覺 */
-  --gutter: 20px;           /* 左側作用區寬 */
+  --gutter: 20px;           /* 左側作用區寬（含圓點與導軌） */
   --rail-w: 1.5px;          /* 連接直線寬度 */
   --bullet-size: 8px;       /* 空心/實心點的外徑（兩者相同） */
   --rail: #dbe1f1;          /* 直線顏色（亮） */
@@ -29,6 +29,9 @@
 
   /* 圓點水平微調（負值往左、正值往右） */
   --bullet-nudge-x: -2px;
+
+  /* 直線端點與圓點的安全距（避免穿出圓點） */
+  --rail-cap: -5px;
 }
 
 @media (prefers-color-scheme: dark){
@@ -102,20 +105,29 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   margin-left: 0;
 }
 
-/* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示 */
-.section::before{
+/* 讓 body 能當作導軌定位容器 */
+.section-body{
+  position: relative;
+}
+
+/* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示
+   導軌畫在 body 內，並在上下端留出 --rail-cap 避免穿出圓點 */
+.section-body::before{
   content:"";
   position:absolute;
-  left: calc(var(--gutter)/2 - var(--rail-w)/2);
-  top: -12px;
-  bottom: -12px;
+  /* 從 body 的視角往左推回到「樹狀導軌中心」 */
+  left: calc(-1 * var(--gutter) + (var(--gutter) / 2) - (var(--rail-w) / 2));
+  top: var(--rail-cap);          /* 上端離開第一個圓點 */
+  bottom: var(--rail-cap);       /* 下端離開最後一個圓點 */
   width: var(--rail-w);
   background: var(--rail);
   pointer-events: none;
   z-index: 0;
-  display: none;                             /* 預設不顯示 */
+  display: none;                 /* 預設不顯示 */
 }
-.section.expanded.has-children::before{      /* ✨ 展開 + 有子層級 → 顯示 */
+
+/* ✅ 展開 + 有子層級 → 顯示導軌 */
+.section.expanded.has-children > .section-body::before{
   display: block;
 }
 
@@ -127,11 +139,6 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 
 /* 內容收合狀態（JS 會切換 .collapsed） */
 .section-body.collapsed{ display:none; }
-
-/* 讓最外層導軌兩端有些留白漸層（僅在顯示時套用） */
-.section.expanded[style*="--depth: 0"]::before{
-  background: linear-gradient(to bottom, transparent 0 6px, var(--rail) 6px calc(100% - 6px), transparent calc(100% - 6px) 100%);
-}
 
 /* 內容區塊一致的上下距 */
 .section-body > *{ margin-block: .35rem .35rem; }
