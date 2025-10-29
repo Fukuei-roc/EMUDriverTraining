@@ -32,6 +32,9 @@
 
   /* 直線端點與圓點的安全距（避免穿出圓點） */
   --rail-cap: -5px;
+
+  /* ✨ 有子層級標題 hover 顏色（淺藍） */
+  --heading-hover:#9ec5ff;
 }
 
 @media (prefers-color-scheme: dark){
@@ -41,6 +44,9 @@
   --line:#262b36;
   --rail:#2a3142;
   --bullet:#9aa3b2;
+
+  /* 深色模式下的 hover 顏色可再亮一點 */
+  --heading-hover:#009AFF;
 }
 }
 
@@ -135,6 +141,14 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 .section > [role="heading"]{
   position: relative;
   z-index: 1;
+  transition: color .15s ease;   /* ✨ 平滑過渡 */
+}
+
+/* ✨ 有子層級的項目：滑鼠移入或鍵盤聚焦時變淺藍，離開恢復 */
+.section.has-children > [role="heading"]:hover,
+.section.has-children > [role="heading"]:focus-visible{
+  color: var(--heading-hover);
+  outline: none;                 /* 交給 focus-visible 顏色提示即可 */
 }
 
 /* 內容收合狀態（JS 會切換 .collapsed） */
