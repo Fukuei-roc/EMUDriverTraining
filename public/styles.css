@@ -28,7 +28,7 @@
   --bullet: #6b778d;        /* 點顏色（亮） */
 
   /* 圓點水平微調（負值往左、正值往右） */
-  --bullet-nudge-x: +1px;
+  --bullet-nudge-x: -2px;
 }
 
 @media (prefers-color-scheme: dark){
