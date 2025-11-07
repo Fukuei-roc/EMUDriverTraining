@@ -82,21 +82,19 @@ body{
 
 /* 卡片容器 */
 .card{
-  background:#fff;
-  border:1px solid #e6e8ef;
-  border-radius:var(--radius);
-  box-shadow:0 10px 30px rgba(0,0,0,.06);
-  overflow:visible; /* ✨ 改為 visible 允許內容延伸 */
-  /* ✨ 允許卡片水平延伸 */
+  background: transparent; /* ✨ 透明背景 */
+  border: none;            /* ✨ 移除邊框 */
+  border-radius: 0;        /* ✨ 移除圓角 */
+  box-shadow: none;        /* ✨ 移除陰影 */
+  overflow: visible;
   min-width: min-content;
   width: fit-content;
 }
 @media (prefers-color-scheme: dark){
-  .card{ background:var(--panel); border-color:var(--line); }
+  .card{ background: transparent; border: none; }
 }
 .content{
-  padding:18px;
-  /* ✨ 允許內容水平延伸 */
+  padding: 0; /* ✨ 移除內距，讓內容完全自由延伸 */
   min-width: min-content;
   width: fit-content;
   overflow: visible;
@@ -106,7 +104,7 @@ body{
 .md-root h1{
   font-size:28px;
   margin:12px 0 14px;
-  max-width: 80vw; /* ✨ 限制最大寬度為 80vw */
+  max-width: 80vw; /* ✨ 限制最大寬度為 80vw（標題不至於太長） */
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -153,9 +151,9 @@ pre{
   position: relative;
   margin-left: var(--indent);
   padding-left: var(--gutter);
-  /* ✨ 確保 section 可以延伸但不過寬 */
+  /* ✨ 讓樹狀本體可實際變寬，觸發水平滾動 */
   min-width: fit-content;
-  max-width: 80vw; /* ✨ 限制最大寬度 */
+  /* ✅ 刪除 max-width 限制，避免被擠窄 */
 }
 
 /* 最外層（depth=0）不需要額外的 margin */
@@ -166,9 +164,9 @@ pre{
 /* 讓 body 能當作導軌定位容器 */
 .section-body{
   position: relative;
-  /* ✨ 確保子內容可以延伸 */
+  /* ✨ 讓子內容可實際超過視窗寬（外部用水平滾動承接） */
   min-width: fit-content;
-  max-width: 80vw; /* ✨ 限制最大寬度 */
+  /* ✅ 刪除 max-width 限制 */
 }
 
 /* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示
@@ -197,8 +195,8 @@ pre{
   position: relative;
   z-index: 1;
   transition: color .15s ease;   /* ✨ 平滑過渡 */
-  /* ✨ 允許標題換行 */
-  max-width: 80vw;
+  /* ✅ 不再限制寬度，由內文元素控制換行 */
+  max-width: none;
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
@@ -221,17 +219,17 @@ pre{
 /* 讓圖像不會壓到左側樹狀區 */
 .section-body img{
   margin-left: .25rem;
-  /* ✨ 圖片最大寬度限制 */
+  /* 內文圖片仍以 80vw 限制，避免過寬 */
   max-width: 80vw;
 }
 
 /* section-body 內的段落和文字內容 */
 .section-body p,
 .section-body > *:not(.section):not(ul):not(ol) {
-  max-width: 80vw;
+  max-width: 80vw;               /* 內文依舊維持可讀性寬度 */
   word-wrap: break-word;
   overflow-wrap: break-word;
-  white-space: normal; /* ✨ 允許換行 */
+  white-space: normal;           /* ✨ 允許換行 */
 }
 
 /* section-body 內的 ul/ol 不要再縮排，因為 li 會被轉成 .section */
@@ -244,7 +242,7 @@ pre{
 /* 如果 section-body 內仍有原生 li（理論上不會），給予縮排避免貼齊 */
 .section-body li{
   margin-left: var(--indent);
-  max-width: 80vw; /* ✨ 限制最大寬度 */
+  /* ✅ 刪除 max-width 限制，避免樹狀被擠窄 */
   word-wrap: break-word;
 }
 
@@ -258,34 +256,13 @@ pre{
 .md-root a:hover{ text-decoration:underline; }
 
 /* ✨ 捲軸樣式美化（可選） */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.05);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0,0,0,0.3);
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
 
 @media (prefers-color-scheme: dark){
-  ::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.3);
-  }
+  ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 }
