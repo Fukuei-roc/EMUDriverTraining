@@ -64,6 +64,7 @@
     .img-overlay__img{
       max-width: 100%; max-height: 100%; object-fit: contain;
       will-change: transform; cursor: zoom-in;
+      touch-action: none; /* 確保觸控手勢由 JS 處理 */
     }
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
@@ -341,7 +342,15 @@
       if(!overlay || !viewport || !overlayImg) return;
 
       let scale = 1, tx = 0, ty = 0, dragging = false, lastX = 0, lastY = 0, baseRect = null;
+
+      // ✨ 新增：觸控縮放相關變數
+      let isPinching = false;
+      let initialDistance = 0;
+      let initialScale = 1;
+      let pinchCenter = { x: 0, y: 0 };
+
       const MIN_SCALE = 1, MAX_SCALE = 5;
+
       function applyTransform(){
         overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
       }
@@ -361,6 +370,8 @@
         tx = maxX===0 ? 0 : Math.max(-maxX, Math.min(maxX, tx));
         ty = maxY===0 ? 0 : Math.max(-maxY, Math.min(maxY, ty));
       }
+
+      // PC 滾輪縮放
       function zoomAt(clientX, clientY, deltaY){
         const zoomFactor = Math.exp(-deltaY * 0.002);
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
@@ -376,6 +387,50 @@
         if(scale > 1){ overlayImg.classList.add('grabbable'); overlay.style.cursor = 'default'; }
         else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }
+
+      // ✨ 新增：計算兩點距離
+      function getDistance(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      // ✨ 新增：計算兩點中心
+      function getCenter(touch1, touch2) {
+        return {
+          x: (touch1.clientX + touch2.clientX) / 2,
+          y: (touch1.clientY + touch2.clientY) / 2
+        };
+      }
+
+      // ✨ 新增：觸控縮放處理
+      function handleTouchZoom(centerX, centerY, newScale) {
+        newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+        if(newScale === scale) return;
+
+        const vpRect = viewport.getBoundingClientRect();
+        const offsetX = centerX - (vpRect.left + vpRect.width/2);
+        const offsetY = centerY - (vpRect.top + vpRect.height/2);
+        const imgToCenterX = offsetX - tx;
+        const imgToCenterY = offsetY - ty;
+        const ratio = newScale / scale;
+
+        tx = offsetX - imgToCenterX * ratio;
+        ty = offsetY - imgToCenterY * ratio;
+        scale = newScale;
+
+        clampPan();
+        applyTransform();
+
+        if(scale > 1){
+          overlayImg.classList.add('grabbable');
+          overlay.style.cursor = 'default';
+        } else {
+          overlayImg.classList.remove('grabbable','grabbing');
+          overlay.style.cursor = 'zoom-out';
+        }
+      }
+
       function openOverlay(img){
         overlayImg.src = img.currentSrc || img.src; overlayImg.alt = img.alt || '';
         overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden';
@@ -386,20 +441,138 @@
         overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true');
         overlayImg.src = ''; document.body.style.overflow = '';
       }
+
       container.addEventListener('click', (e)=>{ const img = e.target.closest('img'); if(img) openOverlay(img); });
 
-      // ✨ 修改：點擊 overlay 或 viewport（圖片容器黑色區域）時關閉，但點擊圖片本身時不關閉
+      // 點擊 overlay 或 viewport（圖片容器黑色區域）時關閉，但點擊圖片本身時不關閉
       overlay.addEventListener('click', (e)=>{
         if(e.target === overlay || e.target === viewport) closeOverlay();
       });
 
       window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
-      overlay.addEventListener('wheel', (e)=>{ e.preventDefault(); const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1); zoomAt(e.clientX, e.clientY, dy); }, { passive: false });
-      overlayImg.addEventListener('dblclick', (e)=>{ e.preventDefault(); if(scale === 1){ const fakeDelta = Math.log(2/scale)/(-0.002); zoomAt(e.clientX, e.clientY, fakeDelta); } else { resetTransform(); } });
-      overlayImg.addEventListener('pointerdown', (e)=>{ if(scale <= 1) return; e.preventDefault(); dragging = true; lastX = e.clientX; lastY = e.clientY; overlayImg.setPointerCapture(e.pointerId); overlayImg.classList.add('grabbing'); });
-      overlayImg.addEventListener('pointermove', (e)=>{ if(!dragging) return; const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY; tx += dx; ty += dy; clampPan(); applyTransform(); });
-      const endDrag = (e)=>{ if(!dragging) return; dragging = false; overlayImg.classList.remove('grabbing'); try{ overlayImg.releasePointerCapture(e.pointerId); }catch(_){} };
-      overlayImg.addEventListener('pointerup', endDrag); overlayImg.addEventListener('pointercancel', endDrag);
+
+      // PC 滾輪縮放
+      overlay.addEventListener('wheel', (e)=>{
+        e.preventDefault();
+        const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1);
+        zoomAt(e.clientX, e.clientY, dy);
+      }, { passive: false });
+
+      // 雙擊縮放
+      overlayImg.addEventListener('dblclick', (e)=>{
+        e.preventDefault();
+        if(scale === 1){
+          const fakeDelta = Math.log(2/scale)/(-0.002);
+          zoomAt(e.clientX, e.clientY, fakeDelta);
+        } else {
+          resetTransform();
+        }
+      });
+
+      // ✨ 新增：觸控開始事件
+      overlayImg.addEventListener('touchstart', (e)=>{
+        if(e.touches.length === 2) {
+          // 雙指觸控 = 縮放
+          e.preventDefault();
+          isPinching = true;
+          dragging = false;
+          initialDistance = getDistance(e.touches[0], e.touches[1]);
+          initialScale = scale;
+          pinchCenter = getCenter(e.touches[0], e.touches[1]);
+        } else if(e.touches.length === 1 && scale > 1) {
+          // 單指拖曳（僅在已縮放時）
+          isPinching = false;
+          dragging = true;
+          lastX = e.touches[0].clientX;
+          lastY = e.touches[0].clientY;
+          overlayImg.classList.add('grabbing');
+        }
+      }, { passive: false });
+
+      // ✨ 新增：觸控移動事件
+      overlayImg.addEventListener('touchmove', (e)=>{
+        if(isPinching && e.touches.length === 2) {
+          // 雙指縮放
+          e.preventDefault();
+          const currentDistance = getDistance(e.touches[0], e.touches[1]);
+          const currentCenter = getCenter(e.touches[0], e.touches[1]);
+          const scaleChange = currentDistance / initialDistance;
+          const newScale = initialScale * scaleChange;
+
+          handleTouchZoom(currentCenter.x, currentCenter.y, newScale);
+        } else if(dragging && e.touches.length === 1) {
+          // 單指拖曳
+          e.preventDefault();
+          const currentX = e.touches[0].clientX;
+          const currentY = e.touches[0].clientY;
+          const dx = currentX - lastX;
+          const dy = currentY - lastY;
+          lastX = currentX;
+          lastY = currentY;
+          tx += dx;
+          ty += dy;
+          clampPan();
+          applyTransform();
+        }
+      }, { passive: false });
+
+      // ✨ 新增：觸控結束事件
+      overlayImg.addEventListener('touchend', (e)=>{
+        if(e.touches.length === 0) {
+          isPinching = false;
+          dragging = false;
+          overlayImg.classList.remove('grabbing');
+        } else if(e.touches.length === 1 && isPinching) {
+          // 從雙指變單指，切換到拖曳模式
+          isPinching = false;
+          if(scale > 1) {
+            dragging = true;
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            overlayImg.classList.add('grabbing');
+          }
+        }
+      });
+
+      overlayImg.addEventListener('touchcancel', (e)=>{
+        isPinching = false;
+        dragging = false;
+        overlayImg.classList.remove('grabbing');
+      });
+
+      // PC 滑鼠拖曳（保持原功能）
+      overlayImg.addEventListener('pointerdown', (e)=>{
+        if(e.pointerType === 'touch') return; // 觸控由 touchstart 處理
+        if(scale <= 1) return;
+        e.preventDefault();
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        overlayImg.setPointerCapture(e.pointerId);
+        overlayImg.classList.add('grabbing');
+      });
+
+      overlayImg.addEventListener('pointermove', (e)=>{
+        if(e.pointerType === 'touch') return; // 觸控由 touchmove 處理
+        if(!dragging) return;
+        const dx = e.clientX - lastX, dy = e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        tx += dx;
+        ty += dy;
+        clampPan();
+        applyTransform();
+      });
+
+      const endDrag = (e)=>{
+        if(e.pointerType === 'touch') return; // 觸控由 touchend 處理
+        if(!dragging) return;
+        dragging = false;
+        overlayImg.classList.remove('grabbing');
+        try{ overlayImg.releasePointerCapture(e.pointerId); }catch(_){}
+      };
+      overlayImg.addEventListener('pointerup', endDrag);
+      overlayImg.addEventListener('pointercancel', endDrag);
     }
 
     /* Frontmatter 解析 */
