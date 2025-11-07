@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: emu-driver-training
+    ports:
+      - "80:3000"  # 將容器的 3000 埠映射到主機的 80 埠
+    volumes:
+      - ./public:/app/public
+      - ./content:/app/content
+      - ./lib:/app/lib
+      # 如果需要即時更新程式碼（開發模式）
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      # 排除 node_modules，使用容器內的版本
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      # 如果您的開發伺服器需要指定 host，可以加入：
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    # 健康檢查（可選）
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
