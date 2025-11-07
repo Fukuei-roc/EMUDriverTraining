@@ -14,7 +14,7 @@
       --h-sub-font-weight: 600;
     }
 
-    /* 內文圖片保護，不破壞縮排 */
+    /* 內文圖片保護,不破壞縮排 */
     .section-body img{
       display:block;
       max-width:100%;
@@ -59,6 +59,7 @@
       display: flex; align-items: center; justify-content: center;
       overflow: hidden; background: #000; border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,.35);
+      cursor: zoom-out; /* 讓 viewport 也能點擊關閉 */
     }
     .img-overlay__img{
       max-width: 100%; max-height: 100%; object-fit: contain;
@@ -386,7 +387,12 @@
         overlayImg.src = ''; document.body.style.overflow = '';
       }
       container.addEventListener('click', (e)=>{ const img = e.target.closest('img'); if(img) openOverlay(img); });
-      overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeOverlay(); });
+
+      // ✨ 修改：點擊 overlay 或 viewport（圖片容器黑色區域）時關閉，但點擊圖片本身時不關閉
+      overlay.addEventListener('click', (e)=>{
+        if(e.target === overlay || e.target === viewport) closeOverlay();
+      });
+
       window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
       overlay.addEventListener('wheel', (e)=>{ e.preventDefault(); const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1); zoomAt(e.clientX, e.clientY, dy); }, { passive: false });
       overlayImg.addEventListener('dblclick', (e)=>{ e.preventDefault(); if(scale === 1){ const fakeDelta = Math.log(2/scale)/(-0.002); zoomAt(e.clientX, e.clientY, fakeDelta); } else { resetTransform(); } });
