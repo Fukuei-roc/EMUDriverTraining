@@ -103,30 +103,35 @@ body{
 }
 
 /* Markdown 文字排版（精簡） */
-.md-root h1{ font-size:28px; margin:12px 0 14px; }
+.md-root h1{
+  font-size:28px;
+  margin:12px 0 14px;
+  max-width: 90vw;
+  word-wrap: break-word;
+}
 .md-root p{
   margin:10px 0;
-  /* ✨ 防止文字被過度壓縮 */
-  min-width: 200px;
+  /* ✨ 最大寬度使用視窗百分比 */
+  max-width: 90vw;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  white-space: normal;
 }
 .md-root img{
-  max-width:100%;
+  max-width: 90vw; /* ✨ 限制圖片最大寬度為視窗的 90% */
   height:auto;
   display:block;
   margin:10px auto;
   border-radius:8px;
-  /* ✨ 確保圖片有合理的最小尺寸 */
-  min-width: 150px;
 }
 pre{
   background:#0001;
   padding:12px;
   border-radius:8px;
-  /* ✨ 防止程式碼區塊被壓縮 */
-  min-width: 200px;
+  /* ✨ 程式碼區塊也遵守寬度限制 */
+  max-width: 90vw;
   overflow-x: auto;
+  word-wrap: break-word;
 }
 
 /* 取消瀏覽器預設清單縮排，交給 .section 控制縮排 */
@@ -147,8 +152,9 @@ pre{
   position: relative;
   margin-left: var(--indent);
   padding-left: var(--gutter);
-  /* ✨ 確保 section 不會被壓縮 */
+  /* ✨ 確保 section 可以延伸但不過寬 */
   min-width: fit-content;
+  max-width: none;
 }
 
 /* 最外層（depth=0）不需要額外的 margin */
@@ -159,7 +165,7 @@ pre{
 /* 讓 body 能當作導軌定位容器 */
 .section-body{
   position: relative;
-  /* ✨ 確保子內容不會被壓縮 */
+  /* ✨ 確保子內容可以延伸 */
   min-width: fit-content;
 }
 
@@ -208,7 +214,19 @@ pre{
 .section-body > *{ margin-block: .35rem .35rem; }
 
 /* 讓圖像不會壓到左側樹狀區 */
-.section-body img{ margin-left: .25rem; }
+.section-body img{
+  margin-left: .25rem;
+  /* ✨ 圖片最大寬度限制 */
+  max-width: 90vw;
+}
+
+/* section-body 內的段落和文字內容 */
+.section-body p,
+.section-body > *:not(.section):not(ul):not(ol) {
+  max-width: 90vw;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
 
 /* section-body 內的 ul/ol 不要再縮排，因為 li 會被轉成 .section */
 .section-body ul, .section-body ol{
@@ -223,7 +241,11 @@ pre{
 }
 
 /* 連結風格 */
-.md-root a{ color:var(--accent); text-decoration:none; }
+.md-root a{
+  color:var(--accent);
+  text-decoration:none;
+  word-wrap: break-word;
+}
 .md-root a:hover{ text-decoration:underline; }
 
 /* ✨ 捲軸樣式美化（可選） */

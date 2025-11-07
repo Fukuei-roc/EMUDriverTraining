@@ -13,8 +13,8 @@
       --h-sub-line-height: 1.65;
       --h-sub-font-weight: 600;
 
-      /* ✨ 內容最小寬度，確保不被擠壓 */
-      --content-min-width: 300px;
+      /* ✨ 內容最大寬度限制（可調整的百分比） */
+      --content-max-width-percent: 80vw;
     }
 
     /* ✨ 允許水平捲動 */
@@ -35,15 +35,13 @@
     }
 
     .md-root {
-      min-width: var(--content-min-width);
       width: fit-content;
     }
 
-    /* 內文圖片保護,不破壞縮排 */
+    /* ✨ 圖片限制：最大寬度為視窗的 80% */
     .section-body img{
       display:block;
-      max-width:100%;
-      min-width: 200px; /* ✨ 確保圖片有最小寬度 */
+      max-width: var(--content-max-width-percent);
       height:auto;
       border-radius:8px;
       cursor: zoom-in;
@@ -51,12 +49,13 @@
     }
     .section-body li img{ margin-top:.25rem; }
 
-    /* ✨ 確保文字內容不會被過度壓縮 */
+    /* ✨ 文字內容限制：最大寬度為視窗的 80%，超過自動換行 */
     .section-body p,
-    .section-body > *:not(.section) {
-      min-width: var(--content-min-width);
-      max-width: 800px;
+    .section-body > *:not(.section):not(ul):not(ol) {
+      max-width: var(--content-max-width-percent);
       word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal; /* 允許文字換行 */
     }
 
     /* 只包含一張圖片的清單項目：去圓點並回退一階（兼容舊瀏覽器靠 class） */
@@ -77,6 +76,8 @@
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
       font-weight: var(--h-sub-font-weight);
+      max-width: var(--content-max-width-percent);
+      word-wrap: break-word;
     }
 
     /* ===== 圖片全螢幕（overlay） ===== */
@@ -112,7 +113,7 @@
       font-weight: var(--h-sub-font-weight);
       cursor: pointer;
       user-select: none;
-      white-space: nowrap; /* ✨ 防止標題換行 */
+      white-space: nowrap; /* 標題保持不換行 */
     }
     .section > [role="heading"]::before{
       content:""; flex:none; display:inline-block;
@@ -130,6 +131,14 @@
     }
 
     .section.no-rail::before{ display:none; }
+
+    /* ✨ 確保 pre/code 也遵守寬度限制 */
+    .section-body pre,
+    .section-body code {
+      max-width: var(--content-max-width-percent);
+      overflow-x: auto;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 <body>
