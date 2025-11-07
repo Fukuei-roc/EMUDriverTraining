@@ -12,18 +12,52 @@
       --h-sub-font-size: 18px;
       --h-sub-line-height: 1.65;
       --h-sub-font-weight: 600;
+
+      /* ✨ 內容最小寬度，確保不被擠壓 */
+      --content-min-width: 300px;
+    }
+
+    /* ✨ 允許水平捲動 */
+    .wrap {
+      overflow-x: auto;
+      overflow-y: auto;
+    }
+
+    /* ✨ 讓內容可以水平延伸 */
+    .card {
+      min-width: min-content;
+      width: fit-content;
+    }
+
+    .content {
+      min-width: min-content;
+      width: fit-content;
+    }
+
+    .md-root {
+      min-width: var(--content-min-width);
+      width: fit-content;
     }
 
     /* 內文圖片保護,不破壞縮排 */
     .section-body img{
       display:block;
       max-width:100%;
+      min-width: 200px; /* ✨ 確保圖片有最小寬度 */
       height:auto;
       border-radius:8px;
       cursor: zoom-in;
       touch-action: manipulation;
     }
     .section-body li img{ margin-top:.25rem; }
+
+    /* ✨ 確保文字內容不會被過度壓縮 */
+    .section-body p,
+    .section-body > *:not(.section) {
+      min-width: var(--content-min-width);
+      max-width: 800px;
+      word-wrap: break-word;
+    }
 
     /* 只包含一張圖片的清單項目：去圓點並回退一階（兼容舊瀏覽器靠 class） */
     .section-body li:has(> img:only-child),
@@ -59,12 +93,12 @@
       display: flex; align-items: center; justify-content: center;
       overflow: hidden; background: #000; border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0,0,0,.35);
-      cursor: zoom-out; /* 讓 viewport 也能點擊關閉 */
+      cursor: zoom-out;
     }
     .img-overlay__img{
       max-width: 100%; max-height: 100%; object-fit: contain;
       will-change: transform; cursor: zoom-in;
-      touch-action: none; /* 確保觸控手勢由 JS 處理 */
+      touch-action: none;
     }
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
@@ -76,21 +110,20 @@
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
       font-weight: var(--h-sub-font-weight);
-      cursor: pointer;                 /* 點標題即可展開/收合 */
+      cursor: pointer;
       user-select: none;
+      white-space: nowrap; /* ✨ 防止標題換行 */
     }
     .section > [role="heading"]::before{
       content:""; flex:none; display:inline-block;
       width: var(--bullet-size); height: var(--bullet-size);
       border-radius: 50%;
-      box-sizing: border-box;           /* 保持外徑一致 */
+      box-sizing: border-box;
       margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
       margin-right: .35rem;
-      /* 預設實心；有子節點時會被覆蓋為空心 */
       background: var(--bullet);
       border: 2px solid transparent;
     }
-    /* 有子層級＝空心圓點（外徑與實心相同） */
     .section.has-children > [role="heading"]::before{
       background: transparent;
       border-color: var(--bullet);
@@ -100,7 +133,7 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="mainWrap">
     <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
       <div class="muted">Markdown Viewer（清單樹狀版）</div>
@@ -129,6 +162,7 @@
   (function(){
     const MD_SRC  = '/content/index.md';
     const root    = document.getElementById('mdRoot');
+    const mainWrap = document.getElementById('mainWrap');
 
     window.addEventListener('DOMContentLoaded', init);
 
@@ -181,6 +215,26 @@
       return Math.max(0, depth - 1);
     }
 
+    /* ✨ 新增：自動捲動到新展開的內容 */
+    function scrollToElement(element) {
+      if(!element || !mainWrap) return;
+
+      // 使用 setTimeout 確保 DOM 已更新
+      setTimeout(() => {
+        const elementRect = element.getBoundingClientRect();
+        const wrapRect = mainWrap.getBoundingClientRect();
+
+        // 計算元素相對於捲動容器的位置
+        const elementLeft = elementRect.left - wrapRect.left + mainWrap.scrollLeft;
+
+        // 平滑捲動到該位置（留一些邊距）
+        mainWrap.scrollTo({
+          left: elementLeft - 20,
+          behavior: 'smooth'
+        });
+      }, 50);
+    }
+
     /* 把 <li> 轉成 .section */
     function listsToSections(container, { defaultCollapsed=false }={}){
       const allLis = Array.from(container.querySelectorAll('li')).reverse();
@@ -193,7 +247,7 @@
         const heading = document.createElement('div');
         heading.setAttribute('role','heading');
         heading.setAttribute('aria-level', String(Math.min(2 + depth, 7)));
-        heading.setAttribute('tabindex', '0'); // 可鍵盤操作
+        heading.setAttribute('tabindex', '0');
 
         const body = document.createElement('div');
         body.className = 'section-body';
@@ -218,7 +272,6 @@
         heading.appendChild(fragHead);
         body.appendChild(fragBody);
 
-        // 先把 wrap 放好，再偵測有無子節點
         wrap.appendChild(heading);
         wrap.appendChild(body);
         li.replaceWith(wrap);
@@ -244,9 +297,17 @@
           const nextCollapsed = !body.classList.contains('collapsed');
           body.classList.toggle('collapsed', nextCollapsed);
           heading.setAttribute('aria-expanded', String(!nextCollapsed));
-          wrap.classList.toggle('expanded', !nextCollapsed);   // ✨ 同步 expanded 狀態
+          wrap.classList.toggle('expanded', !nextCollapsed);
           saveState(key, nextCollapsed);
           updateRailVisibility(container);
+
+          // ✨ 展開時自動捲動到第一個子項目
+          if(!nextCollapsed && hasChildren) {
+            const firstChild = body.querySelector('.section');
+            if(firstChild) {
+              scrollToElement(firstChild);
+            }
+          }
         };
         heading.addEventListener('click', toggle);
         heading.addEventListener('keydown', (e)=>{
@@ -342,8 +403,6 @@
       if(!overlay || !viewport || !overlayImg) return;
 
       let scale = 1, tx = 0, ty = 0, dragging = false, lastX = 0, lastY = 0, baseRect = null;
-
-      // ✨ 新增：觸控縮放相關變數
       let isPinching = false;
       let initialDistance = 0;
       let initialScale = 1;
@@ -371,7 +430,6 @@
         ty = maxY===0 ? 0 : Math.max(-maxY, Math.min(maxY, ty));
       }
 
-      // PC 滾輪縮放
       function zoomAt(clientX, clientY, deltaY){
         const zoomFactor = Math.exp(-deltaY * 0.002);
         const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * zoomFactor));
@@ -388,14 +446,12 @@
         else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }
 
-      // ✨ 新增：計算兩點距離
       function getDistance(touch1, touch2) {
         const dx = touch2.clientX - touch1.clientX;
         const dy = touch2.clientY - touch1.clientY;
         return Math.sqrt(dx * dx + dy * dy);
       }
 
-      // ✨ 新增：計算兩點中心
       function getCenter(touch1, touch2) {
         return {
           x: (touch1.clientX + touch2.clientX) / 2,
@@ -403,7 +459,6 @@
         };
       }
 
-      // ✨ 新增：觸控縮放處理
       function handleTouchZoom(centerX, centerY, newScale) {
         newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
         if(newScale === scale) return;
@@ -443,36 +498,13 @@
       }
 
       container.addEventListener('click', (e)=>{ const img = e.target.closest('img'); if(img) openOverlay(img); });
-
-      // 點擊 overlay 或 viewport（圖片容器黑色區域）時關閉，但點擊圖片本身時不關閉
-      overlay.addEventListener('click', (e)=>{
-        if(e.target === overlay || e.target === viewport) closeOverlay();
-      });
-
+      overlay.addEventListener('click', (e)=>{ if(e.target === overlay || e.target === viewport) closeOverlay(); });
       window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
+      overlay.addEventListener('wheel', (e)=>{ e.preventDefault(); const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1); zoomAt(e.clientX, e.clientY, dy); }, { passive: false });
+      overlayImg.addEventListener('dblclick', (e)=>{ e.preventDefault(); if(scale === 1){ const fakeDelta = Math.log(2/scale)/(-0.002); zoomAt(e.clientX, e.clientY, fakeDelta); } else { resetTransform(); } });
 
-      // PC 滾輪縮放
-      overlay.addEventListener('wheel', (e)=>{
-        e.preventDefault();
-        const dy = e.deltaY * (e.ctrlKey ? 0.5 : 1);
-        zoomAt(e.clientX, e.clientY, dy);
-      }, { passive: false });
-
-      // 雙擊縮放
-      overlayImg.addEventListener('dblclick', (e)=>{
-        e.preventDefault();
-        if(scale === 1){
-          const fakeDelta = Math.log(2/scale)/(-0.002);
-          zoomAt(e.clientX, e.clientY, fakeDelta);
-        } else {
-          resetTransform();
-        }
-      });
-
-      // ✨ 新增：觸控開始事件
       overlayImg.addEventListener('touchstart', (e)=>{
         if(e.touches.length === 2) {
-          // 雙指觸控 = 縮放
           e.preventDefault();
           isPinching = true;
           dragging = false;
@@ -480,7 +512,6 @@
           initialScale = scale;
           pinchCenter = getCenter(e.touches[0], e.touches[1]);
         } else if(e.touches.length === 1 && scale > 1) {
-          // 單指拖曳（僅在已縮放時）
           isPinching = false;
           dragging = true;
           lastX = e.touches[0].clientX;
@@ -489,19 +520,15 @@
         }
       }, { passive: false });
 
-      // ✨ 新增：觸控移動事件
       overlayImg.addEventListener('touchmove', (e)=>{
         if(isPinching && e.touches.length === 2) {
-          // 雙指縮放
           e.preventDefault();
           const currentDistance = getDistance(e.touches[0], e.touches[1]);
           const currentCenter = getCenter(e.touches[0], e.touches[1]);
           const scaleChange = currentDistance / initialDistance;
           const newScale = initialScale * scaleChange;
-
           handleTouchZoom(currentCenter.x, currentCenter.y, newScale);
         } else if(dragging && e.touches.length === 1) {
-          // 單指拖曳
           e.preventDefault();
           const currentX = e.touches[0].clientX;
           const currentY = e.touches[0].clientY;
@@ -516,14 +543,12 @@
         }
       }, { passive: false });
 
-      // ✨ 新增：觸控結束事件
       overlayImg.addEventListener('touchend', (e)=>{
         if(e.touches.length === 0) {
           isPinching = false;
           dragging = false;
           overlayImg.classList.remove('grabbing');
         } else if(e.touches.length === 1 && isPinching) {
-          // 從雙指變單指，切換到拖曳模式
           isPinching = false;
           if(scale > 1) {
             dragging = true;
@@ -540,9 +565,8 @@
         overlayImg.classList.remove('grabbing');
       });
 
-      // PC 滑鼠拖曳（保持原功能）
       overlayImg.addEventListener('pointerdown', (e)=>{
-        if(e.pointerType === 'touch') return; // 觸控由 touchstart 處理
+        if(e.pointerType === 'touch') return;
         if(scale <= 1) return;
         e.preventDefault();
         dragging = true;
@@ -553,7 +577,7 @@
       });
 
       overlayImg.addEventListener('pointermove', (e)=>{
-        if(e.pointerType === 'touch') return; // 觸控由 touchmove 處理
+        if(e.pointerType === 'touch') return;
         if(!dragging) return;
         const dx = e.clientX - lastX, dy = e.clientY - lastY;
         lastX = e.clientX;
@@ -565,7 +589,7 @@
       });
 
       const endDrag = (e)=>{
-        if(e.pointerType === 'touch') return; // 觸控由 touchend 處理
+        if(e.pointerType === 'touch') return;
         if(!dragging) return;
         dragging = false;
         overlayImg.classList.remove('grabbing');

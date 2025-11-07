@@ -15,11 +15,11 @@
   --accent:#7aa2ff;
 
   --radius:14px;
-  --maxw:980px;
+  --maxw:none;              /* ✨ 移除最大寬度限制，允許水平延伸 */
 
   /* 統一縮排參數 */
   --indent: 28px;           /* 每一層的統一縮排寬度 */
-  
+
   /* 折疊樹狀視覺 */
   --gutter: 20px;           /* 左側作用區寬（含圓點與導軌） */
   --rail-w: 1.5px;          /* 連接直線寬度 */
@@ -50,7 +50,12 @@
 }
 }
 
-html,body{height:100%}
+html,body{
+  height:100%;
+  /* ✨ 允許水平捲動 */
+  overflow-x: auto;
+  overflow-y: auto;
+}
 body{
   margin:0;
   color:var(--fg);
@@ -61,7 +66,15 @@ body{
   body{ background:linear-gradient(180deg,var(--bg),#0f131d); }
 }
 
-.wrap{ max-width:var(--maxw); margin:0 auto; padding:20px 16px 60px; }
+/* ✨ 移除最大寬度限制，允許內容水平延伸 */
+.wrap{
+  max-width: none;
+  margin:0 auto;
+  padding:20px 16px 60px;
+  /* ✨ 確保水平捲動 */
+  overflow-x: auto;
+  overflow-y: visible;
+}
 
 /* 可依需求隱藏頁首與標題列 */
 .hdr{ display:none; }
@@ -73,18 +86,48 @@ body{
   border:1px solid #e6e8ef;
   border-radius:var(--radius);
   box-shadow:0 10px 30px rgba(0,0,0,.06);
-  overflow:hidden;
+  overflow:visible; /* ✨ 改為 visible 允許內容延伸 */
+  /* ✨ 允許卡片水平延伸 */
+  min-width: min-content;
+  width: fit-content;
 }
 @media (prefers-color-scheme: dark){
   .card{ background:var(--panel); border-color:var(--line); }
 }
-.content{ padding:18px; }
+.content{
+  padding:18px;
+  /* ✨ 允許內容水平延伸 */
+  min-width: min-content;
+  width: fit-content;
+  overflow: visible;
+}
 
 /* Markdown 文字排版（精簡） */
 .md-root h1{ font-size:28px; margin:12px 0 14px; }
-.md-root p{ margin:10px 0; }
-.md-root img{ max-width:100%; height:auto; display:block; margin:10px auto; border-radius:8px; }
-pre{ background:#0001; padding:12px; border-radius:8px; }
+.md-root p{
+  margin:10px 0;
+  /* ✨ 防止文字被過度壓縮 */
+  min-width: 200px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.md-root img{
+  max-width:100%;
+  height:auto;
+  display:block;
+  margin:10px auto;
+  border-radius:8px;
+  /* ✨ 確保圖片有合理的最小尺寸 */
+  min-width: 150px;
+}
+pre{
+  background:#0001;
+  padding:12px;
+  border-radius:8px;
+  /* ✨ 防止程式碼區塊被壓縮 */
+  min-width: 200px;
+  overflow-x: auto;
+}
 
 /* 取消瀏覽器預設清單縮排，交給 .section 控制縮排 */
 .md-root ul, .md-root ol{
@@ -104,6 +147,8 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   position: relative;
   margin-left: var(--indent);
   padding-left: var(--gutter);
+  /* ✨ 確保 section 不會被壓縮 */
+  min-width: fit-content;
 }
 
 /* 最外層（depth=0）不需要額外的 margin */
@@ -114,6 +159,8 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 /* 讓 body 能當作導軌定位容器 */
 .section-body{
   position: relative;
+  /* ✨ 確保子內容不會被壓縮 */
+  min-width: fit-content;
 }
 
 /* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示
@@ -142,6 +189,9 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
   position: relative;
   z-index: 1;
   transition: color .15s ease;   /* ✨ 平滑過渡 */
+  /* ✨ 防止標題文字換行，保持在一行 */
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 /* ✨ 有子層級的項目：滑鼠移入或鍵盤聚焦時變淺藍，離開恢復 */
@@ -175,3 +225,36 @@ pre{ background:#0001; padding:12px; border-radius:8px; }
 /* 連結風格 */
 .md-root a{ color:var(--accent); text-decoration:none; }
 .md-root a:hover{ text-decoration:underline; }
+
+/* ✨ 捲軸樣式美化（可選） */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.3);
+}
+
+@media (prefers-color-scheme: dark){
+  ::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.3);
+  }
+}
