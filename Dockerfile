@@ -1,20 +1,23 @@
-# 使用 Node.js 官方映像
 FROM node:18-alpine
 
-# 設定工作目錄
 WORKDIR /app
 
-# 複製 package 檔案
+# 先安裝依賴（利用快取）
 COPY package*.json ./
+RUN npm ci --only=production
 
-# 安裝依賴
-RUN npm install
+# 把靜態資產與程式打包進映像檔
+# 1) public/（含 public/lib、public/index.html 等）
+COPY public/ /app/public/
+# 2) 將專案根的 content/ 打到 /app/public/content/（補上 images 來源）
+COPY content/ /app/public/content/
+# 3) 你的前端 lib（若已在 public/lib 可移除這行）
+COPY lib/ /app/lib/
 
-# 複製所有應用程式檔案
-COPY . .
+# 4) 伺服器程式（若檔名不同請調整）
+COPY server.js /app/server.js
 
-# 暴露埠號 (根據您的開發伺服器設定，通常是 3000 或 8080)
+ENV NODE_ENV=production
 EXPOSE 3000
 
-# 啟動命令
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]
