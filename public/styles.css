@@ -106,19 +106,20 @@ body{
 .md-root h1{
   font-size:28px;
   margin:12px 0 14px;
-  max-width: 90vw;
+  max-width: 80vw; /* ✨ 限制最大寬度為 80vw */
   word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .md-root p{
   margin:10px 0;
   /* ✨ 最大寬度使用視窗百分比 */
-  max-width: 90vw;
+  max-width: 80vw;
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: normal;
 }
 .md-root img{
-  max-width: 90vw; /* ✨ 限制圖片最大寬度為視窗的 90% */
+  max-width: 80vw; /* ✨ 限制圖片最大寬度為視窗的 80% */
   height:auto;
   display:block;
   margin:10px auto;
@@ -129,7 +130,7 @@ pre{
   padding:12px;
   border-radius:8px;
   /* ✨ 程式碼區塊也遵守寬度限制 */
-  max-width: 90vw;
+  max-width: 80vw;
   overflow-x: auto;
   word-wrap: break-word;
 }
@@ -154,7 +155,7 @@ pre{
   padding-left: var(--gutter);
   /* ✨ 確保 section 可以延伸但不過寬 */
   min-width: fit-content;
-  max-width: none;
+  max-width: 80vw; /* ✨ 限制最大寬度 */
 }
 
 /* 最外層（depth=0）不需要額外的 margin */
@@ -167,6 +168,7 @@ pre{
   position: relative;
   /* ✨ 確保子內容可以延伸 */
   min-width: fit-content;
+  max-width: 80vw; /* ✨ 限制最大寬度 */
 }
 
 /* 左側導軌（rail）— 只有「展開」且「有子層級」才顯示
@@ -195,8 +197,11 @@ pre{
   position: relative;
   z-index: 1;
   transition: color .15s ease;   /* ✨ 平滑過渡 */
-  /* ✨ 防止標題文字換行，保持在一行 */
-  white-space: nowrap;
+  /* ✨ 允許標題換行 */
+  max-width: 80vw;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
   min-width: fit-content;
 }
 
@@ -217,15 +222,16 @@ pre{
 .section-body img{
   margin-left: .25rem;
   /* ✨ 圖片最大寬度限制 */
-  max-width: 90vw;
+  max-width: 80vw;
 }
 
 /* section-body 內的段落和文字內容 */
 .section-body p,
 .section-body > *:not(.section):not(ul):not(ol) {
-  max-width: 90vw;
+  max-width: 80vw;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  white-space: normal; /* ✨ 允許換行 */
 }
 
 /* section-body 內的 ul/ol 不要再縮排，因為 li 會被轉成 .section */
@@ -238,6 +244,8 @@ pre{
 /* 如果 section-body 內仍有原生 li（理論上不會），給予縮排避免貼齊 */
 .section-body li{
   margin-left: var(--indent);
+  max-width: 80vw; /* ✨ 限制最大寬度 */
+  word-wrap: break-word;
 }
 
 /* 連結風格 */
@@ -245,6 +253,7 @@ pre{
   color:var(--accent);
   text-decoration:none;
   word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .md-root a:hover{ text-decoration:underline; }
 

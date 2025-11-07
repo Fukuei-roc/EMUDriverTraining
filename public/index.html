@@ -14,7 +14,7 @@
       --h-sub-font-weight: 600;
 
       /* ✨ 內容最大寬度限制（可調整的百分比） */
-      --content-max-width-percent: 80vw;
+      --content-max-width-percent: 70vw;
     }
 
     /* ✨ 允許水平捲動 */
@@ -36,6 +36,7 @@
 
     .md-root {
       width: fit-content;
+      max-width: var(--content-max-width-percent);
     }
 
     /* ✨ 圖片限制：最大寬度為視窗的 80% */
@@ -113,7 +114,10 @@
       font-weight: var(--h-sub-font-weight);
       cursor: pointer;
       user-select: none;
-      white-space: nowrap; /* 標題保持不換行 */
+      max-width: var(--content-max-width-percent);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal; /* ✨ 允許標題換行 */
     }
     .section > [role="heading"]::before{
       content:""; flex:none; display:inline-block;
