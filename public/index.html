@@ -64,7 +64,7 @@
       white-space: normal;
     }
 
-    /* 只包含一張圖片的清單項目(去掉圓點並回補縮排) */
+    /* 只包含一張圖片的清單項目(去掉圓點並回補縮排) —— 舊瀏覽器 fallback（轉換前的 <li>） */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
@@ -140,6 +140,7 @@
 
       background: var(--bullet);
       border: 2px solid transparent;
+      /* 注意：我們用 visibility 來隱藏（在 styles.css 控制），以保留佈局空間 */
     }
     .section.has-children > [role="heading"]::before{
       background: transparent;
@@ -291,7 +292,27 @@
       return sectionBody.querySelector('.section > [role="heading"]');
     }
 
-    /* li → .section,並加入穩定貼左的點擊行為 */
+    /* 判斷一個容器是否「只有一張圖片」 */
+    function isImageOnlyContainer(container){
+      const kids = Array.from(container.childNodes).filter(n => {
+        if(n.nodeType === 3) return !!n.textContent.trim();
+        return n.nodeType === 1;
+      });
+      if(kids.length !== 1) return false;
+      const el = kids[0];
+      if(el.nodeType !== 1) return false;
+      if(el.tagName === 'IMG') return true;
+      if(el.tagName === 'P'){
+        const pKids = Array.from(el.childNodes).filter(n => {
+          if(n.nodeType === 3) return !!n.textContent.trim();
+          return n.nodeType === 1;
+        });
+        return (pKids.length === 1 && pKids[0].nodeType === 1 && pKids[0].tagName === 'IMG');
+      }
+      return false;
+    }
+
+    /* li → .section, 並加入穩定貼左的點擊行為 + 圖片標題隱藏圓點 */
     function listsToSections(container, { defaultCollapsed=false }={}){
       const allLis = Array.from(container.querySelectorAll('li')).reverse();
       allLis.forEach(li=>{
@@ -328,6 +349,11 @@
         wrap.appendChild(heading);
         wrap.appendChild(body);
         li.replaceWith(wrap);
+
+        /* ⬇︎ 如果標題區只有圖片，為該節點加入 .image-heading（用 CSS 隱藏圓點但保留位置） */
+        if (isImageOnlyContainer(heading)) {
+          wrap.classList.add('image-heading');
+        }
 
         const hasChildren = !!body.querySelector('.section');
         wrap.classList.toggle('has-children', hasChildren);
@@ -399,7 +425,7 @@
       });
     }
 
-    /* 標記只有一張圖片的 li */
+    /* 標記只有一張圖片的 li（轉換前的 <li> 用） */
     function markImageOnlyLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
@@ -420,7 +446,7 @@
       });
     }
 
-    /* 標記純文字型清單項目 */
+    /* 標記純文字型清單項目（轉換前的 <li> 用） */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
@@ -493,7 +519,9 @@
         const ratio = newScale / scale;
         tx = offsetX - imgToCursorX * ratio;
         ty = offsetY - imgToCursorY * ratio;
-        scale = newScale; clampPan; clampPan();
+        scale = newScale;
+        clampPan();
+        applyTransform();
         if(scale > 1){ overlayImg.classList.add('grabbable'); overlay.style.cursor = 'default'; }
         else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }

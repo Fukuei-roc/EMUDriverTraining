@@ -189,6 +189,17 @@ pre{
   align-items: flex-start;
 }
 
+/* 🔕 圖片標題的圓點「隱藏但保留位置」 */
+.section.image-heading > [role="heading"]::before{
+  visibility: hidden; /* 只隱藏，不移除佈局空間 */
+}
+
+/* 額外保險（支援 :has 的瀏覽器）—— 若標題只有一張圖片也隱藏圓點 */
+.section > [role="heading"]:has(> img:only-child)::before,
+.section > [role="heading"]:has(> p:only-child > img:only-child)::before{
+  visibility: hidden;
+}
+
 /* 只修正「第一層級」圓點的垂直置中微調（不影響其他層級） */
 .section[style*="--depth: 0"] > [role="heading"]::before{
   margin-top: calc(
