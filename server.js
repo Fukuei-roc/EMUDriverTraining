@@ -20,11 +20,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// 萬用路由：若需要前端路由可改這裡
+// 處理 /dark 路由和所有其他路由
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
   console.log(`✅ Server running: http://localhost:${PORT}`);
+  console.log(`   Light mode: http://localhost:${PORT}`);
+  console.log(`   Dark mode:  http://localhost:${PORT}/dark`);
 });

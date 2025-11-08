@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>客貨車駕駛人員班</title>
-  <meta name="color-scheme" content="light dark" />
 
   <!-- ===== Icons / PWA ===== -->
   <!-- Favicon(一般桌面/Android 皆會用到) -->
@@ -16,14 +15,28 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
   <!-- Web App Manifest(Android / Chrome PWA) -->
   <link rel="manifest" href="/icons/site.webmanifest">
-  <!-- 狀態列顏色(支援深淺色) -->
-  <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <!-- 狀態列顏色 -->
+  <meta name="theme-color" content="#ffffff" id="theme-color-meta">
   <!-- iOS Safari(可選):啟用全螢幕樣式與狀態列色彩 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="stylesheet" href="/styles.css">
+
+  <!-- 主題模式控制腳本(必須在 head 最前面執行,避免閃爍) -->
+  <script>
+    (function(){
+      const isDarkMode = window.location.pathname.includes('/dark');
+      document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+
+      // 更新 theme-color meta
+      const themeColorMeta = document.getElementById('theme-color-meta');
+      if(themeColorMeta){
+        themeColorMeta.setAttribute('content', isDarkMode ? '#0b0c0f' : '#ffffff');
+      }
+    })();
+  </script>
+
   <style>
     :root{
       /* 清單字級(供 .section 標題與一般 li 使用) */
@@ -235,22 +248,21 @@
       animation: btnPulse 0.3s ease;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .collapse-all-btn {
-        background: rgba(255, 255, 255, 0.4);
-        color: rgba(200, 200, 200, 0.4);
-        border-color: rgba(255, 255, 255, 0.05);
-      }
+    /* 暗色模式按鈕樣式 */
+    [data-theme="dark"] .collapse-all-btn {
+      background: rgba(255, 255, 255, 0.4);
+      color: rgba(200, 200, 200, 0.4);
+      border-color: rgba(255, 255, 255, 0.05);
+    }
 
-      .collapse-all-btn:hover {
-        background: rgba(255, 255, 255, 0.6);
-        color: rgba(200, 200, 200, 0.6);
-      }
+    [data-theme="dark"] .collapse-all-btn:hover {
+      background: rgba(255, 255, 255, 0.6);
+      color: rgba(200, 200, 200, 0.6);
+    }
 
-      .collapse-all-btn:active {
-        background: rgba(122, 162, 255, 0.25);
-        color: rgba(122, 162, 255, 0.6);
-      }
+    [data-theme="dark"] .collapse-all-btn:active {
+      background: rgba(122, 162, 255, 0.25);
+      color: rgba(122, 162, 255, 0.6);
     }
   </style>
 </head>
@@ -337,7 +349,7 @@
 
     /* ===== 全部收合按鈕功能 ===== */
     function setupCollapseAllButton(){
-      // 監聽滾動事件，在頂端時顯示按鈕
+      // 監聽滾動事件,在頂端時顯示按鈕
       let scrollTimeout;
       mainWrap.addEventListener('scroll', ()=>{
         clearTimeout(scrollTimeout);
@@ -386,7 +398,7 @@
         const key = normalizeText(heading.textContent);
         savedStates.set(section, { isExpanded, key });
 
-        // 如果目前是展開的，就收合它
+        // 如果目前是展開的,就收合它
         if(isExpanded){
           body.classList.add('collapsed');
           section.classList.remove('expanded');
