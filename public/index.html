@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>客貨車駕駛人員班 — EMU700、800型電車組教材</title>
+  <title>客貨車駕駛人員班</title>
   <meta name="color-scheme" content="light dark" />
 
   <!-- ===== Icons / PWA ===== -->
-  <!-- Favicon（一般桌面/Android 皆會用到） -->
+  <!-- Favicon(一般桌面/Android 皆會用到) -->
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-  <!-- 傳統 .ico（相容性保險） -->
+  <!-- 傳統 .ico(相容性保險) -->
   <link rel="shortcut icon" href="/icons/favicon.ico">
   <!-- iOS 主畫面捷徑用 -->
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <!-- Web App Manifest（Android / Chrome PWA） -->
+  <!-- Web App Manifest(Android / Chrome PWA) -->
   <link rel="manifest" href="/icons/site.webmanifest">
-  <!-- 狀態列顏色（支援深淺色） -->
+  <!-- 狀態列顏色(支援深淺色) -->
   <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <!-- iOS Safari（可選）：啟用全螢幕樣式與狀態列色彩 -->
+  <!-- iOS Safari(可選):啟用全螢幕樣式與狀態列色彩 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -41,10 +41,10 @@
       --indent: 22px;
       --bullet: currentColor;
 
-      /* 可微調圓點垂直位置（相對第一行） */
+      /* 可微調圓點垂直位置(相對第一行) */
       --bullet-nudge-y: 0px;
 
-      /* 只針對第一層級圓點的額外垂直微調（正數=往下） */
+      /* 只針對第一層級圓點的額外垂直微調(正數=往下) */
       --bullet-nudge-y-l1: 10px;
     }
 
@@ -82,7 +82,7 @@
       white-space: normal;
     }
 
-    /* 只包含一張圖片的清單項目(去掉圓點並回補縮排) —— 舊瀏覽器 fallback（轉換前的 <li>） */
+    /* 只包含一張圖片的清單項目(去掉圓點並回補縮排) —— 舊瀏覽器 fallback(轉換前的 <li>) */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
@@ -152,13 +152,13 @@
       margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
       margin-right: .35rem;
 
-      /* 使圓點在「第一行」的行盒中垂直置中：
+      /* 使圓點在「第一行」的行盒中垂直置中:
          第一行行高 = var(--h-sub-line-height) * 1em */
       margin-top: calc((var(--h-sub-line-height) * 1em - var(--bullet-size)) / 2 + var(--bullet-nudge-y, 0px));
 
       background: var(--bullet);
       border: 2px solid transparent;
-      /* 注意：我們用 visibility 來隱藏（在 styles.css 控制），以保留佈局空間 */
+      /* 注意:我們用 visibility 來隱藏(在 styles.css 控制),以保留佈局空間 */
     }
     .section.has-children > [role="heading"]::before{
       background: transparent;
@@ -167,7 +167,7 @@
 
     .section.no-rail::before{ display:none; }
 
-    /* 只修正「第一層級」圓點的垂直置中微調（不影響其他層級） */
+    /* 只修正「第一層級」圓點的垂直置中微調(不影響其他層級) */
     .section[style*="--depth: 0"] > [role="heading"]::before{
       margin-top: calc(
         (var(--h-sub-line-height) * 1em - var(--bullet-size)) / 2
@@ -182,9 +182,82 @@
       overflow-x: auto;
       word-wrap: break-word;
     }
+
+    /* ===== 全部收合按鈕 ===== */
+    .collapse-all-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 999;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 8px;
+      color: rgba(102, 102, 102, 0.4);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: opacity 0.3s ease, transform 0.3s ease, background 0.2s ease, color 0.2s ease;
+      opacity: 0;
+      pointer-events: none;
+      letter-spacing: 2px;
+    }
+
+    .collapse-all-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .collapse-all-btn:hover {
+      background: rgba(255, 255, 255, 0.6);
+      color: rgba(102, 102, 102, 0.6);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .collapse-all-btn:active {
+      transform: translateY(0);
+      background: rgba(122, 162, 255, 0.25);
+      border-color: rgba(122, 162, 255, 0.3);
+      color: rgba(122, 162, 255, 0.6);
+    }
+
+    @keyframes btnPulse {
+      0% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+      50% { box-shadow: 0 2px 16px rgba(122, 162, 255, 0.3); }
+      100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+    }
+
+    .collapse-all-btn.pulse {
+      animation: btnPulse 0.3s ease;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .collapse-all-btn {
+        background: rgba(255, 255, 255, 0.4);
+        color: rgba(200, 200, 200, 0.4);
+        border-color: rgba(255, 255, 255, 0.05);
+      }
+
+      .collapse-all-btn:hover {
+        background: rgba(255, 255, 255, 0.6);
+        color: rgba(200, 200, 200, 0.6);
+      }
+
+      .collapse-all-btn:active {
+        background: rgba(122, 162, 255, 0.25);
+        color: rgba(122, 162, 255, 0.6);
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- 全部收合按鈕 -->
+  <button class="collapse-all-btn" id="collapseAllBtn">&gt; &lt;</button>
+
   <div class="wrap" id="mainWrap">
     <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
@@ -215,6 +288,11 @@
     const MD_SRC   = '/content/index.md';
     const root     = document.getElementById('mdRoot');
     const mainWrap = document.getElementById('mainWrap');
+    const collapseAllBtn = document.getElementById('collapseAllBtn');
+
+    // 儲存收合前的狀態
+    let savedStates = null;
+    let isCollapsedAll = false;
 
     window.addEventListener('DOMContentLoaded', init);
 
@@ -248,9 +326,103 @@
 
         // 6) 啟用圖片全螢幕
         enableImageFullscreen(root);
+
+        // 7) 設定全部收合按鈕
+        setupCollapseAllButton();
       }catch(err){
         showError('載入 Markdown 失敗:' + String(err));
         console.error(err);
+      }
+    }
+
+    /* ===== 全部收合按鈕功能 ===== */
+    function setupCollapseAllButton(){
+      // 監聽滾動事件，在頂端時顯示按鈕
+      let scrollTimeout;
+      mainWrap.addEventListener('scroll', ()=>{
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(()=>{
+          const isAtTop = mainWrap.scrollTop <= 10;
+          collapseAllBtn.classList.toggle('visible', isAtTop);
+        }, 50);
+      });
+
+      // 初始檢查
+      const isAtTop = mainWrap.scrollTop <= 10;
+      collapseAllBtn.classList.toggle('visible', isAtTop);
+
+      // 按鈕點擊事件
+      collapseAllBtn.addEventListener('click', ()=>{
+        // 觸發脈衝動畫
+        collapseAllBtn.classList.remove('pulse');
+        void collapseAllBtn.offsetWidth;
+        collapseAllBtn.classList.add('pulse');
+
+        if(!isCollapsedAll){
+          // 收合全部
+          collapseAll();
+          collapseAllBtn.innerHTML = '&lt; &gt;';
+          isCollapsedAll = true;
+        }else{
+          // 恢復之前的狀態
+          restoreAll();
+          collapseAllBtn.innerHTML = '&gt; &lt;';
+          isCollapsedAll = false;
+        }
+      });
+    }
+
+    function collapseAll(){
+      // 儲存當前所有節點的狀態
+      savedStates = new Map();
+      const allSections = root.querySelectorAll('.section');
+
+      allSections.forEach(section => {
+        const body = section.querySelector('.section-body');
+        const heading = section.querySelector('[role="heading"]');
+        if(!body || !heading) return;
+
+        const isExpanded = !body.classList.contains('collapsed');
+        const key = normalizeText(heading.textContent);
+        savedStates.set(section, { isExpanded, key });
+
+        // 如果目前是展開的，就收合它
+        if(isExpanded){
+          body.classList.add('collapsed');
+          section.classList.remove('expanded');
+          heading.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      updateRailVisibility(root);
+    }
+
+    function restoreAll(){
+      if(!savedStates) return;
+
+      savedStates.forEach((state, section) => {
+        const body = section.querySelector('.section-body');
+        const heading = section.querySelector('[role="heading"]');
+        if(!body || !heading) return;
+
+        // 恢復原本的狀態
+        if(state.isExpanded){
+          body.classList.remove('collapsed');
+          section.classList.add('expanded');
+          heading.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      savedStates = null;
+      updateRailVisibility(root);
+    }
+
+    // 清除記憶的函數
+    function clearSavedStates(){
+      if(savedStates && isCollapsedAll){
+        savedStates = null;
+        isCollapsedAll = false;
+        collapseAllBtn.innerHTML = '&gt; &lt;';
       }
     }
 
@@ -330,7 +502,7 @@
       return false;
     }
 
-    /* ===== 高度動畫（0 ↔ 自適應）+ 導軌脈衝 + 標題柔光 ===== */
+    /* ===== 高度動畫(0 ↔ 自適應)+ 導軌脈衝 + 標題柔光 ===== */
     function animateSection(bodyEl, expand=true, onDone){
       if(!bodyEl) { onDone && onDone(); return; }
       const parent = bodyEl.parentElement; // .section
@@ -348,7 +520,7 @@
       };
 
       if(reduce){
-        // 瞬切（無動畫）
+        // 瞬切(無動畫)
         if(expand){
           bodyEl.classList.remove('collapsed');
           parent.classList.add('expanded');
@@ -361,7 +533,7 @@
       }
 
       if(expand){
-        // 展開：先顯示再由 0 → scrollHeight
+        // 展開:先顯示再由 0 → scrollHeight
         bodyEl.classList.remove('collapsed');
         parent.classList.add('expanded');
 
@@ -379,7 +551,7 @@
           if(e.propertyName === 'height'){ bodyEl.removeEventListener('transitionend', te); finish(); }
         });
       }else{
-        // 收合：由 scrollHeight → 0
+        // 收合:由 scrollHeight → 0
         const startH = bodyEl.scrollHeight;
         bodyEl.classList.add('animating');
         bodyEl.style.height = startH + 'px';
@@ -446,7 +618,7 @@
         wrap.appendChild(body);
         li.replaceWith(wrap);
 
-        /* 若標題區只有圖片，為該節點加入 .image-heading（用 CSS 做影子收合） */
+        /* 若標題區只有圖片,為該節點加入 .image-heading(用 CSS 做影子收合) */
         if (isImageOnlyContainer(heading)) {
           wrap.classList.add('image-heading');
         }
@@ -469,6 +641,11 @@
         const toggle = ()=>{
           const expanding = body.classList.contains('collapsed'); // 目前是收合 → 準備展開
           saveState(key, expanding);
+
+          // 如果使用者手動展開節點,清除之前保存的收合全部記憶
+          if(expanding && savedStates && isCollapsedAll){
+            clearSavedStates();
+          }
 
           animateSection(body, expanding, ()=>{
             heading.setAttribute('aria-expanded', String(expanding));
@@ -525,7 +702,7 @@
       });
     }
 
-    /* 標記只有一張圖片的 li（轉換前的 <li> 用） */
+    /* 標記只有一張圖片的 li(轉換前的 <li> 用) */
     function markImageOnlyLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
@@ -546,7 +723,7 @@
       });
     }
 
-    /* 標記純文字型清單項目（轉換前的 <li> 用） */
+    /* 標記純文字型清單項目(轉換前的 <li> 用) */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
