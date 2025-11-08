@@ -8,15 +8,15 @@
   <link rel="stylesheet" href="/styles.css">
   <style>
     :root{
-      /* 清單字級（供 .section 標題與一般 li 使用） */
+      /* 清單字級(供 .section 標題與一般 li 使用) */
       --h-sub-font-size: 18px;
       --h-sub-line-height: 1.65;
       --h-sub-font-weight: 600;
 
-      /* 內容最大寬度限制（可調整的百分比） */
+      /* 內容最大寬度限制(可調整的百分比) */
       --content-max-width-percent: 70vw;
 
-      /* 導引點尺寸與縮排（由外部 styles.css 補完） */
+      /* 導引點尺寸與縮排(由外部 styles.css 補完) */
       --bullet-size: 10px;
       --gutter: 22px;
       --bullet-nudge-x: 0px;
@@ -31,7 +31,7 @@
       scroll-behavior: smooth;
       /* 讓 scrollIntoView({inline:'start'}) 以此作為左對齊內距 */
       scroll-padding-left: 8px;
-      padding-left: 8px; /* 與上列搭配，避免視覺緊貼邊緣 */
+      padding-left: 8px; /* 與上列搭配,避免視覺緊貼邊緣 */
     }
 
     /* 讓內容可以水平延伸 */
@@ -59,7 +59,7 @@
       white-space: normal;
     }
 
-    /* 只包含一張圖片的清單項目（去掉圓點並回補縮排） */
+    /* 只包含一張圖片的清單項目(去掉圓點並回補縮排) */
     .section-body li:has(> img:only-child),
     .section-body li:has(> p:only-child > img:only-child){
       list-style: none;
@@ -81,7 +81,7 @@
       word-wrap: break-word;
     }
 
-    /* ===== 圖片全螢幕（overlay） ===== */
+    /* ===== 圖片全螢幕(overlay) ===== */
     .img-overlay{
       position: fixed; inset: 0; display: none;
       align-items: center; justify-content: center;
@@ -105,7 +105,7 @@
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
 
-    /* section 標題列（含偽 heading） */
+    /* section 標題列(含偽 heading) */
     .section > [role="heading"]{
       display:flex; align-items:center; column-gap:.5rem;
       margin: 0.35rem 0; min-height: 28px;
@@ -114,7 +114,7 @@
       font-weight: var(--h-sub-font-weight);
       cursor: pointer;
       user-select: none;
-      /* 不限制 heading 寬，避免被擠窄；真正的內容寬由內文元素控制 */
+      /* 不限制 heading 寬,避免被擠窄;真正的內容寬由內文元素控制 */
       max-width: none;
       word-wrap: break-word;
       overflow-wrap: break-word;
@@ -137,7 +137,7 @@
 
     .section.no-rail::before{ display:none; }
 
-    /* pre/code 也遵守寬度限制（在內文區） */
+    /* pre/code 也遵守寬度限制(在內文區) */
     .section-body pre,
     .section-body code {
       max-width: var(--content-max-width-percent);
@@ -150,7 +150,7 @@
   <div class="wrap" id="mainWrap">
     <header class="hdr" style="display:none">
       <div class="brand">EMUDriverTraining</div>
-      <div class="muted">Markdown Viewer（清單樹狀版）</div>
+      <div class="muted">Markdown Viewer(清單樹狀版)</div>
     </header>
 
     <article class="card">
@@ -182,7 +182,7 @@
 
     async function init(){
       if(typeof window.markdownit !== 'function'){
-        return showError('找不到 markdown-it（/lib/markdown-it.min.js）。');
+        return showError('找不到 markdown-it(/lib/markdown-it.min.js)。');
       }
       const md = window.markdownit({ html:false, linkify:true, typographer:true });
 
@@ -198,10 +198,10 @@
         // 2) 將 ./images/* 或 images/* 改寫到 /content/images/*
         rewriteRelativeImages(root);
 
-        // 3) 將 <ul>/<ol> 的 <li> 轉成 .section（點標題展開/收合）
+        // 3) 將 <ul>/<ol> 的 <li> 轉成 .section(點標題展開/收合)
         listsToSections(root, { defaultCollapsed: true });
 
-        // 4) 標記「只含一張圖片」與「一般文字型」的 li（舊瀏覽器 fallback）
+        // 4) 標記「只含一張圖片」與「一般文字型」的 li(舊瀏覽器 fallback)
         markImageOnlyLis(root);
         tagHeadingSizedLis(root);
 
@@ -211,28 +211,23 @@
         // 6) 啟用圖片全螢幕
         enableImageFullscreen(root);
       }catch(err){
-        showError('載入 Markdown 失敗：' + String(err));
+        showError('載入 Markdown 失敗:' + String(err));
         console.error(err);
       }
     }
 
-    /* ===== 更穩定的「貼齊左側」實作 =====
-       策略：
-       A) 先用 scrollIntoView({inline:'start'}) 搶先對齊（吃到 scroll-padding-left）
-       B) 以 requestAnimationFrame 逐幀重試 + 精準量測修正，直到誤差 < 1px 或達到嘗試上限
-    */
+    /* ===== 更穩定的「貼齊左側」實作 ===== */
     function scrollAlignLeftStable(el, margin = 0, maxTries = 12){
       if(!el || !mainWrap) return;
-      if(mainWrap.scrollWidth <= mainWrap.clientWidth) return; // 沒有水平捲動就不處理
+      if(mainWrap.scrollWidth <= mainWrap.clientWidth) return;
 
-      // 先讓瀏覽器幫忙對齊（吃 scroll-padding-left）
       try{
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
       }catch(_e){}
 
       let tries = 0;
       const step = () => {
-        if(!el.isConnected) return; // 元素已消失
+        if(!el.isConnected) return;
         const style  = getComputedStyle(mainWrap);
         const padL   = parseFloat(style.scrollPaddingLeft || '0') + parseFloat(style.paddingLeft || '0') + margin;
 
@@ -245,19 +240,16 @@
 
         const diff = Math.abs(mainWrap.scrollLeft - desired);
 
-        // 小於 1px 視為到位；或嘗試次數用完時直接就位
         if (diff <= 1 || tries >= maxTries){
-          mainWrap.scrollLeft = desired; // 最後一跳保底對齊
+          mainWrap.scrollLeft = desired;
           return;
         }
 
-        // 邊滾邊修（避免因圖片載入/字體回流造成偏差）
         mainWrap.scrollTo({ left: desired });
         tries++;
         requestAnimationFrame(step);
       };
 
-      // 等展開/排版後再開始量測
       requestAnimationFrame(step);
     }
 
@@ -272,7 +264,7 @@
       return Math.max(0, depth - 1);
     }
 
-    /* 取「第一層」子 section 的 heading（優先 :scope） */
+    /* 取「第一層」子 section 的 heading */
     function getFirstChildHeading(sectionBody){
       let h = null;
       try{ h = sectionBody.querySelector(':scope > .section > [role="heading"]'); }catch(_e){}
@@ -280,7 +272,7 @@
       return sectionBody.querySelector('.section > [role="heading"]');
     }
 
-    /* li → .section，並加入穩定貼左的點擊行為 */
+    /* li → .section,並加入穩定貼左的點擊行為 */
     function listsToSections(container, { defaultCollapsed=false }={}){
       const allLis = Array.from(container.querySelectorAll('li')).reverse();
       allLis.forEach(li=>{
@@ -297,7 +289,6 @@
         const body = document.createElement('div');
         body.className = 'section-body';
 
-        // 拆分標題與內容
         const fragHead = document.createDocumentFragment();
         const fragBody = document.createDocumentFragment();
         let n = li.firstChild, metList = false;
@@ -323,7 +314,6 @@
         wrap.classList.toggle('has-children', hasChildren);
         wrap.classList.toggle('is-leaf', !hasChildren);
 
-        // 初始展開/收合狀態（localStorage 記憶）
         const key = 'fold:li:' + normalizeText(heading.textContent);
         const saved = loadState(key);
         const startCollapsed = (saved != null) ? saved : !!defaultCollapsed;
@@ -335,10 +325,8 @@
         }
         heading.setAttribute('aria-expanded', String(!startCollapsed));
 
-        // 點擊切換 + 穩定貼左
         const toggle = ()=>{
           const wasCollapsed = body.classList.contains('collapsed');
-          // 先切換狀態
           body.classList.toggle('collapsed', !wasCollapsed);
           heading.setAttribute('aria-expanded', String(wasCollapsed));
           wrap.classList.toggle('expanded', wasCollapsed);
@@ -346,17 +334,10 @@
           updateRailVisibility(container);
 
           if (wasCollapsed){
-            // 收合 → 展開
-            // ① 先把被點層（母層）貼左（給使用者定位）
-            scrollAlignLeftStable(heading, /*margin*/ 0);
-
-            // ② 再把第一層子標題貼左（直接帶到內容層）
+            scrollAlignLeftStable(heading, 0);
             const firstChildHeading = getFirstChildHeading(body) || heading;
-
-            // 等一幀，等 DOM 回流/重排完成後再量測
             requestAnimationFrame(()=> scrollAlignLeftStable(firstChildHeading, 0));
           }else{
-            // 展開 → 收合：把母層貼左以收回視野
             scrollAlignLeftStable(heading, 0);
           }
         };
@@ -371,7 +352,6 @@
 
       container.querySelectorAll('ul,ol').forEach(list=> list.classList.add('list-host'));
 
-      // 監聽容器尺寸變化（例如圖片載入導致寬度改變）→ 若正在展開中的層級在視野外，幫它校正
       const ro = new ResizeObserver(() => {
         const expandedHeadings = container.querySelectorAll('.section.expanded > [role="heading"]');
         expandedHeadings.forEach(h=>{
@@ -380,7 +360,7 @@
           const outLeft = rect.left < wrapRect.left + 1;
           const outRight = rect.right > wrapRect.right - 1;
           if(outLeft || outRight){
-            scrollAlignLeftStable(h, 0, /*maxTries*/ 4);
+            scrollAlignLeftStable(h, 0, 4);
           }
         });
       });
@@ -400,7 +380,7 @@
       });
     }
 
-    /* 標記只有一張圖片的 li（兼容不支援 :has 的瀏覽器） */
+    /* 標記只有一張圖片的 li */
     function markImageOnlyLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
@@ -421,7 +401,7 @@
       });
     }
 
-    /* 標記純文字型清單項目（用來將字級對齊 heading） */
+    /* 標記純文字型清單項目 */
     function tagHeadingSizedLis(container){
       const lis = container.querySelectorAll('li');
       lis.forEach(li=>{
@@ -440,7 +420,7 @@
       });
     }
 
-    /* 更新導軌可見性：若同層只有單一子項，就不需要畫導軌 */
+    /* 更新導軌可見性 */
     function updateRailVisibility(container){
       const sections = container.querySelectorAll('.section');
       sections.forEach(s=>{
@@ -454,7 +434,7 @@
       });
     }
 
-    /* 圖片全螢幕（縮放+拖曳） */
+    /* 圖片全螢幕(縮放+拖曳+手機觸控支援) */
     function enableImageFullscreen(container){
       const overlay   = document.getElementById('imgOverlay');
       const viewport  = document.getElementById('imgViewport');
@@ -463,6 +443,13 @@
 
       let scale = 1, tx = 0, ty = 0, baseRect = null;
       const MIN_SCALE = 1, MAX_SCALE = 5;
+
+      // 觸控相關變數
+      let lastTouchDist = 0;
+      let lastTouchCenter = { x: 0, y: 0 };
+      let isDragging = false;
+      let dragStartX = 0, dragStartY = 0;
+      let dragStartTx = 0, dragStartTy = 0;
 
       function applyTransform(){ overlayImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
       function resetTransform(){ scale = 1; tx = 0; ty = 0; applyTransform(); overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
@@ -492,6 +479,133 @@
         else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }
 
+      // 計算兩點之間的距離
+      function getTouchDistance(t1, t2){
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      // 計算兩點的中心
+      function getTouchCenter(t1, t2){
+        return {
+          x: (t1.clientX + t2.clientX) / 2,
+          y: (t1.clientY + t2.clientY) / 2
+        };
+      }
+
+      // 觸控開始
+      overlayImg.addEventListener('touchstart', (e)=>{
+        if(e.touches.length === 1 && scale > 1){
+          // 單指拖曳(僅在放大時)
+          isDragging = true;
+          dragStartX = e.touches[0].clientX;
+          dragStartY = e.touches[0].clientY;
+          dragStartTx = tx;
+          dragStartTy = ty;
+          overlayImg.classList.add('grabbing');
+        } else if(e.touches.length === 2){
+          // 雙指縮放
+          e.preventDefault();
+          isDragging = false;
+          lastTouchDist = getTouchDistance(e.touches[0], e.touches[1]);
+          lastTouchCenter = getTouchCenter(e.touches[0], e.touches[1]);
+        }
+      }, { passive: false });
+
+      // 觸控移動
+      overlayImg.addEventListener('touchmove', (e)=>{
+        if(e.touches.length === 1 && isDragging && scale > 1){
+          // 單指拖曳
+          e.preventDefault();
+          const deltaX = e.touches[0].clientX - dragStartX;
+          const deltaY = e.touches[0].clientY - dragStartY;
+          tx = dragStartTx + deltaX;
+          ty = dragStartTy + deltaY;
+          clampPan();
+          applyTransform();
+        } else if(e.touches.length === 2){
+          // 雙指縮放
+          e.preventDefault();
+          const newDist = getTouchDistance(e.touches[0], e.touches[1]);
+          const newCenter = getTouchCenter(e.touches[0], e.touches[1]);
+
+          // 計算縮放比例
+          const scaleDelta = newDist / lastTouchDist;
+          const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleDelta));
+
+          if(newScale !== scale){
+            const vpRect = viewport.getBoundingClientRect();
+            const offsetX = newCenter.x - (vpRect.left + vpRect.width/2);
+            const offsetY = newCenter.y - (vpRect.top  + vpRect.height/2);
+            const imgToCursorX = offsetX - tx;
+            const imgToCursorY = offsetY - ty;
+            const ratio = newScale / scale;
+
+            tx = offsetX - imgToCursorX * ratio;
+            ty = offsetY - imgToCursorY * ratio;
+            scale = newScale;
+            clampPan();
+            applyTransform();
+
+            if(scale > 1){
+              overlayImg.classList.add('grabbable');
+              overlay.style.cursor = 'default';
+            } else {
+              overlayImg.classList.remove('grabbable','grabbing');
+              overlay.style.cursor = 'zoom-out';
+            }
+          }
+
+          lastTouchDist = newDist;
+          lastTouchCenter = newCenter;
+        }
+      }, { passive: false });
+
+      // 觸控結束
+      overlayImg.addEventListener('touchend', (e)=>{
+        if(isDragging){
+          isDragging = false;
+          overlayImg.classList.remove('grabbing');
+        }
+        // 如果沒有觸控點了,重置觸控狀態
+        if(e.touches.length === 0){
+          lastTouchDist = 0;
+        }
+      });
+
+      // 滑鼠拖曳(PC)
+      let isMouseDragging = false;
+      overlayImg.addEventListener('mousedown', (e)=>{
+        if(scale > 1 && e.button === 0){
+          isMouseDragging = true;
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          dragStartTx = tx;
+          dragStartTy = ty;
+          overlayImg.classList.add('grabbing');
+          e.preventDefault();
+        }
+      });
+
+      document.addEventListener('mousemove', (e)=>{
+        if(isMouseDragging){
+          const deltaX = e.clientX - dragStartX;
+          const deltaY = e.clientY - dragStartY;
+          tx = dragStartTx + deltaX;
+          ty = dragStartTy + deltaY;
+          clampPan();
+          applyTransform();
+        }
+      });
+
+      document.addEventListener('mouseup', ()=>{
+        if(isMouseDragging){
+          isMouseDragging = false;
+          overlayImg.classList.remove('grabbing');
+        }
+      });
+
       container.addEventListener('click', (e)=>{ const img = e.target.closest('img'); if(img) openOverlay(img); });
       function openOverlay(img){
         overlayImg.src = img.currentSrc || img.src; overlayImg.alt = img.alt || '';
@@ -502,6 +616,9 @@
       function closeOverlay(){
         overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true');
         overlayImg.src = ''; document.body.style.overflow = '';
+        isDragging = false;
+        isMouseDragging = false;
+        overlayImg.classList.remove('grabbing');
       }
       overlay.addEventListener('click', (e)=>{ if(e.target === overlay || e.target === viewport) closeOverlay(); });
       window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
