@@ -30,7 +30,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
     - ![APC總成外觀](./images/APC1.jpg)
   - 車頂設備
     - ![車頂高壓設備俯視圖](./images/Ceiling_1.jpg)
-    - ![主電路圖](./images/主電路.jpg)
+    - ![主電路圖](./images/mainCircuit.jpg)
   - 隔離開關
     - 800型
       - ![800型司機側後配電盤](./images/20230511_131734.jpg)
@@ -165,7 +165,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
         - ![CCOS 1位](./images/20221230_132233.jpg)
       - 110V電瓶低電壓
         - VCB閉合需電瓶電壓80V以上
-          - ![電瓶電壓表](./images/電瓶電壓表.jpg)
+          - ![電瓶電壓表](./images/batteryVoltmeter.jpg)
         - 無解
       - EP車電氣室NFB跳脫
         - VCB控制(VCBN)
@@ -234,7 +234,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
         - ![總控制器](./images/KEY-ON.jpg)
         - 無解
       - 司軔閥把手未置於運轉位
-        - ![司軔閥把手未置於運轉位](./images/司軔閥把手未置於運轉位.jpg)
+        - ![司軔閥把手未置於運轉位](./images/brakeValveNotInRunPosition.jpg)
         - 緊張時容易忘記
   - SIV轉供
     - 單SIV故障
@@ -247,7 +247,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
         - ![TCMS VCB切開](./images/20221230_141925.jpg)
       - 空調機不運轉
         - ![空調機燈亮](./images/20221230_141451.jpg)
-        - ![空調機燈滅](./images/空調機運轉.jpg)
+        - ![空調機燈滅](./images/airConditionerRunning.jpg)
       - 充電器不充電
         - TCMS顯示故障訊息
           - ![TCMS 充電器故障](./images/20221230_145920.jpg)
@@ -271,12 +271,12 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
       - 故障現象
         - 拉電門不出力並TCMS顯示SIV1、2 OFF，電門把手推回OFF位後SIV1、2即自動復位。
         - 中性區間燈亮起
-          - ![中性區間燈亮](./images/中性區間燈亮.jpg)
+          - ![中性區間燈亮](./images/neutralSectionLight.jpg)
         - TCMS顯示中性區間
-          - ![TCMS 中性區間](./images/TCMS顯示中性區間.jpg)
+          - ![TCMS 中性區間](./images/tcmsNeutralSection.jpg)
       - 應急處理
         - 應急處理1：按中性區間復位按鈕嘗試復位
-          - ![手按中性區間按鈕](./images/手按中性區間按鈕.jpg)
+          - ![手按中性區間按鈕](./images/neutralSectionButton.jpg)
         - 應急處理2：至EP車電氣室扳下APC電源(APCN)NFB
           - ![APC電源NFB](./images/20221230_144858.jpg)
           - 處理後操作方式：中性區間前收電門並按中性區間復位按鈕(此時燈亮)，通過中性區間後再次按中性區間復位按鈕(此時燈滅)。
@@ -289,18 +289,18 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
     - 全車
       - 應急處理
         - 檢查兩端駕駛室後方配電盤是否有NFB跳開
-          - ![駕駛室後方配電盤](./images/駕駛室後方配電盤.jpg)
+          - ![駕駛室後方配電盤](./images/cabRearDistributionPanel.jpg)
         - 至後端駕駛室按停留軔機鬆軔按鈕
-          - ![停留軔機鬆軔按鈕](./images/停留軔機鬆軔按鈕.jpg)
+          - ![停留軔機鬆軔按鈕](./images/parkingBrakeReleaseButton.jpg)
     - 單車
       - 步驟1：查看TCMS哪車不鬆軔
         - ![TCMS 停留軔機單車不鬆軔](./images/20221230_145627.jpg)
       - 步驟2：至故障車客室將停留軔機隔離開關考克扳至隔離位
         - ![停留軔機隔離開關考克](./images/20221230_145442.jpg)
       - 步驟3：至故障車車下將後轉向架軔缸開關考克扳至隔離位
-        - ![後轉向架軔缸開關考克](./images/後轉向架隔離考克：隔離位.jpg)
+        - ![後轉向架軔缸開關考克](./images/rearBogieIsolationCock.jpg)
       - 步驟4：拉起後轉向架左右兩側停留軔機鬆軔拉索
-        - ![停留軔機鬆軔拉索](./images/停留軔機鬆軔拉索左.jpg)
+        - ![停留軔機鬆軔拉索](./images/parkingBrakeReleaseCableLeft.jpg)
       - 步驟5：
          - EMU700型：至駕駛室將停留軔機隔離開關(PARS)(700型)轉1位
             - ![PARS](./images/20221230_134848.jpg)
@@ -364,7 +364,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
         - ![TCMS 不出力](./images/20221230_150622.jpg)
         - ![自動門燈](./images/20221230_150716.jpg)
     - 應急處理1：將蓄電池充電器(24V)NFB扳下再扳上，嘗試復位充電器。
-      - ![24V充電器NFB](./images/24V充電器NFB.jpg)
+      - ![24V充電器NFB](./images/charger24vNfb.jpg)
     - 應急處理2：
       - 步驟1：將旅客疏導至別車乘坐
       - 步驟2：將故障車6扇車門隔離
