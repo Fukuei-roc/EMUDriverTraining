@@ -39,6 +39,11 @@
 
   /* 只針對第一層級圓點的額外垂直微調（正數=往下） */
   --bullet-nudge-y-l1: 1px;
+
+  /* ===== 動畫 tokens ===== */
+  --ease-smooth: cubic-bezier(.22,.61,.36,1);
+  --dur-fast: 160ms;     /* opacity/小變化 */
+  --dur-med: 200ms;      /* 高度動畫 180–220ms 之間 */
 }
 
 @media (prefers-color-scheme: dark){
@@ -50,6 +55,13 @@
   --bullet:#9aa3b2;
   --heading-hover:#009AFF;
 }
+}
+
+@media (prefers-reduced-motion: reduce){
+  :root{
+    --dur-fast: 1ms;
+    --dur-med: 1ms;
+  }
 }
 
 html,body{
@@ -174,6 +186,16 @@ pre{
   display: block;
 }
 
+/* ===== 導軌脈衝（展開時 600ms 一次） ===== */
+@keyframes railPulse {
+  0% { opacity: .0; }
+  30% { opacity: .7; }
+  100% { opacity: .3; }
+}
+.section-body.pulse::before{
+  animation: railPulse 600ms var(--ease-smooth) 1;
+}
+
 /* 標題列（圓點與文字） */
 .section > [role="heading"]{
   position: relative;
@@ -215,7 +237,33 @@ pre{
   outline: none;
 }
 
-/* 收合狀態 */
+/* ===== 標題「高亮消退」：新展開節點 800ms 柔光 ===== */
+.section.just-opened > [role="heading"]{
+  position: relative;
+}
+.section.just-opened > [role="heading"]::after{
+  content:"";
+  position:absolute; inset:-2px -6px;
+  background: currentColor;
+  opacity:.08; border-radius:8px; pointer-events:none;
+  animation: headGlow 800ms var(--ease-smooth) 1 forwards;
+}
+@keyframes headGlow{
+  from{ opacity:.10; } to{ opacity:0; }
+}
+
+/* ===== 展開/收合：絲滑高度 + 淡入 ===== */
+.section-body.animating{
+  overflow: hidden;
+  will-change: height, opacity;
+  transition:
+    height var(--dur-med) var(--ease-smooth),
+    opacity var(--dur-fast) linear;
+}
+.section.expanded > .section-body{ opacity: 1; }
+.section:not(.expanded) > .section-body{ opacity: .0; }
+
+/* 收合狀態（動畫結束後才加上） */
 .section-body.collapsed{ display:none; }
 
 /* 內容區塊上下距 */
@@ -245,6 +293,18 @@ pre{
 .section-body li{
   margin-left: var(--indent);
   word-wrap: break-word;
+}
+
+/* ===== 純圖片標題：影子收合（展開時極淡升起） ===== */
+.section.image-heading > [role="heading"] img{
+  transition: filter var(--dur-med) var(--ease-smooth),
+              transform var(--dur-med) var(--ease-smooth);
+  filter: none;
+  transform: translateY(0);
+}
+.section.image-heading.expanded > [role="heading"] img{
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,.18));
+  transform: translateY(-2px);
 }
 
 /* 連結風格 */

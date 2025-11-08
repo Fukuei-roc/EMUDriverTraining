@@ -330,7 +330,85 @@
       return false;
     }
 
-    /* li → .section, 並加入穩定貼左的點擊行為 + 圖片標題隱藏圓點 */
+    /* ===== 高度動畫（0 ↔ 自適應）+ 導軌脈衝 + 標題柔光 ===== */
+    function animateSection(bodyEl, expand=true, onDone){
+      if(!bodyEl) { onDone && onDone(); return; }
+      const parent = bodyEl.parentElement; // .section
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const finish = ()=>{
+        bodyEl.classList.remove('animating');
+        bodyEl.style.height = '';
+        bodyEl.style.opacity = '';
+        if(!expand){
+          bodyEl.classList.add('collapsed');
+          parent.classList.remove('expanded');
+        }
+        onDone && onDone();
+      };
+
+      if(reduce){
+        // 瞬切（無動畫）
+        if(expand){
+          bodyEl.classList.remove('collapsed');
+          parent.classList.add('expanded');
+        }else{
+          bodyEl.classList.add('collapsed');
+          parent.classList.remove('expanded');
+        }
+        finish();
+        return;
+      }
+
+      if(expand){
+        // 展開：先顯示再由 0 → scrollHeight
+        bodyEl.classList.remove('collapsed');
+        parent.classList.add('expanded');
+
+        const targetH = bodyEl.scrollHeight; // 量測完成高度
+        bodyEl.classList.add('animating');
+        bodyEl.style.height = '0px';
+        bodyEl.style.opacity = 0;
+
+        requestAnimationFrame(()=>{
+          bodyEl.style.height = targetH + 'px';
+          bodyEl.style.opacity = 1;
+        });
+
+        bodyEl.addEventListener('transitionend', function te(e){
+          if(e.propertyName === 'height'){ bodyEl.removeEventListener('transitionend', te); finish(); }
+        });
+      }else{
+        // 收合：由 scrollHeight → 0
+        const startH = bodyEl.scrollHeight;
+        bodyEl.classList.add('animating');
+        bodyEl.style.height = startH + 'px';
+        bodyEl.style.opacity = 1;
+
+        requestAnimationFrame(()=>{
+          bodyEl.style.height = '0px';
+          bodyEl.style.opacity = 0;
+        });
+
+        bodyEl.addEventListener('transitionend', function te(e){
+          if(e.propertyName === 'height'){ bodyEl.removeEventListener('transitionend', te); finish(); }
+        });
+      }
+    }
+
+    function pulseRail(bodyEl){
+      // 讓 :before 可以重新觸發動畫
+      bodyEl.classList.remove('pulse');
+      // 觸發重排
+      void bodyEl.offsetWidth;
+      bodyEl.classList.add('pulse');
+    }
+    function glowJustOpened(sectionEl){
+      sectionEl.classList.add('just-opened');
+      setTimeout(()=> sectionEl.classList.remove('just-opened'), 850);
+    }
+
+    /* li → .section, 並加入穩定貼左與動畫行為 + 圖片標題隱藏圓點 */
     function listsToSections(container, { defaultCollapsed=false }={}){
       const allLis = Array.from(container.querySelectorAll('li')).reverse();
       allLis.forEach(li=>{
@@ -368,7 +446,7 @@
         wrap.appendChild(body);
         li.replaceWith(wrap);
 
-        /* ⬇︎ 如果標題區只有圖片，為該節點加入 .image-heading（用 CSS 隱藏圓點但保留位置） */
+        /* 若標題區只有圖片，為該節點加入 .image-heading（用 CSS 做影子收合） */
         if (isImageOnlyContainer(heading)) {
           wrap.classList.add('image-heading');
         }
@@ -389,20 +467,24 @@
         heading.setAttribute('aria-expanded', String(!startCollapsed));
 
         const toggle = ()=>{
-          const wasCollapsed = body.classList.contains('collapsed');
-          body.classList.toggle('collapsed', !wasCollapsed);
-          heading.setAttribute('aria-expanded', String(wasCollapsed));
-          wrap.classList.toggle('expanded', wasCollapsed);
-          saveState(key, !wasCollapsed);
-          updateRailVisibility(container);
+          const expanding = body.classList.contains('collapsed'); // 目前是收合 → 準備展開
+          saveState(key, expanding);
 
-          if (wasCollapsed){
-            scrollAlignLeftStable(heading, 0);
-            const firstChildHeading = getFirstChildHeading(body) || heading;
-            requestAnimationFrame(()=> scrollAlignLeftStable(firstChildHeading, 0));
-          }else{
-            scrollAlignLeftStable(heading, 0);
-          }
+          animateSection(body, expanding, ()=>{
+            heading.setAttribute('aria-expanded', String(expanding));
+            wrap.classList.toggle('expanded', expanding);
+            updateRailVisibility(container);
+
+            if (expanding){
+              scrollAlignLeftStable(heading, 0);
+              const firstChildHeading = getFirstChildHeading(body) || heading;
+              requestAnimationFrame(()=> scrollAlignLeftStable(firstChildHeading, 0));
+              pulseRail(body);        // 導軌脈衝
+              glowJustOpened(wrap);   // 標題柔光
+            }else{
+              scrollAlignLeftStable(heading, 0);
+            }
+          });
         };
 
         heading.addEventListener('click', toggle);
