@@ -22,6 +22,12 @@
       --bullet-nudge-x: 0px;
       --indent: 22px;
       --bullet: currentColor;
+
+      /* 可微調圓點垂直位置（相對第一行） */
+      --bullet-nudge-y: 0px;
+
+      /* 只針對第一層級圓點的額外垂直微調（正數=往下） */
+      --bullet-nudge-y-l1: 10px;
     }
 
     /* 容器允許水平捲動 + 平滑捲動 + 左側 padding 作為 scrollIntoView 的對齊區 */
@@ -29,9 +35,8 @@
       overflow-x: auto;
       overflow-y: auto;
       scroll-behavior: smooth;
-      /* 讓 scrollIntoView({inline:'start'}) 以此作為左對齊內距 */
       scroll-padding-left: 8px;
-      padding-left: 8px; /* 與上列搭配,避免視覺緊貼邊緣 */
+      padding-left: 8px;
     }
 
     /* 讓內容可以水平延伸 */
@@ -105,16 +110,17 @@
     .img-overlay__img.grabbable { cursor: grab; }
     .img-overlay__img.grabbing  { cursor: grabbing; }
 
-    /* section 標題列(含偽 heading) */
+    /* ===== 標題列(含圓點) —— 讓圓點鎖在第一行 ===== */
     .section > [role="heading"]{
-      display:flex; align-items:center; column-gap:.5rem;
+      display:flex;
+      align-items:flex-start; /* 以第一行的行盒頂端作為定位基準 */
+      column-gap:.5rem;
       margin: 0.35rem 0; min-height: 28px;
       font-size: var(--h-sub-font-size);
       line-height: var(--h-sub-line-height);
       font-weight: var(--h-sub-font-weight);
       cursor: pointer;
       user-select: none;
-      /* 不限制 heading 寬,避免被擠窄;真正的內容寬由內文元素控制 */
       max-width: none;
       word-wrap: break-word;
       overflow-wrap: break-word;
@@ -127,6 +133,11 @@
       box-sizing: border-box;
       margin-left: calc(-1 * (var(--gutter) - var(--bullet-size)) + var(--bullet-nudge-x));
       margin-right: .35rem;
+
+      /* 使圓點在「第一行」的行盒中垂直置中：
+         第一行行高 = var(--h-sub-line-height) * 1em */
+      margin-top: calc((var(--h-sub-line-height) * 1em - var(--bullet-size)) / 2 + var(--bullet-nudge-y, 0px));
+
       background: var(--bullet);
       border: 2px solid transparent;
     }
@@ -136,6 +147,14 @@
     }
 
     .section.no-rail::before{ display:none; }
+
+    /* 只修正「第一層級」圓點的垂直置中微調（不影響其他層級） */
+    .section[style*="--depth: 0"] > [role="heading"]::before{
+      margin-top: calc(
+        (var(--h-sub-line-height) * 1em - var(--bullet-size)) / 2
+        + var(--bullet-nudge-y-l1, 1px)
+      );
+    }
 
     /* pre/code 也遵守寬度限制(在內文區) */
     .section-body pre,
@@ -474,7 +493,7 @@
         const ratio = newScale / scale;
         tx = offsetX - imgToCursorX * ratio;
         ty = offsetY - imgToCursorY * ratio;
-        scale = newScale; clampPan(); applyTransform();
+        scale = newScale; clampPan; clampPan();
         if(scale > 1){ overlayImg.classList.add('grabbable'); overlay.style.cursor = 'default'; }
         else { overlayImg.classList.remove('grabbable','grabbing'); overlay.style.cursor = 'zoom-out'; }
       }
@@ -516,7 +535,6 @@
       // 觸控移動
       overlayImg.addEventListener('touchmove', (e)=>{
         if(e.touches.length === 1 && isDragging && scale > 1){
-          // 單指拖曳
           e.preventDefault();
           const deltaX = e.touches[0].clientX - dragStartX;
           const deltaY = e.touches[0].clientY - dragStartY;
@@ -525,12 +543,9 @@
           clampPan();
           applyTransform();
         } else if(e.touches.length === 2){
-          // 雙指縮放
           e.preventDefault();
           const newDist = getTouchDistance(e.touches[0], e.touches[1]);
           const newCenter = getTouchCenter(e.touches[0], e.touches[1]);
-
-          // 計算縮放比例
           const scaleDelta = newDist / lastTouchDist;
           const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * scaleDelta));
 
@@ -568,7 +583,6 @@
           isDragging = false;
           overlayImg.classList.remove('grabbing');
         }
-        // 如果沒有觸控點了,重置觸控狀態
         if(e.touches.length === 0){
           lastTouchDist = 0;
         }
