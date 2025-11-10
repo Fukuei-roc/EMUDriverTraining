@@ -659,20 +659,44 @@
             clearSavedStates();
           }
 
+          // 在動畫開始前先記住當前點擊的標題位置
+          const headingRect = heading.getBoundingClientRect();
+          const wrapRect = mainWrap.getBoundingClientRect();
+          const offsetBeforeAnimation = headingRect.top - wrapRect.top + mainWrap.scrollTop;
+
           animateSection(body, expanding, ()=>{
             heading.setAttribute('aria-expanded', String(expanding));
             wrap.classList.toggle('expanded', expanding);
             updateRailVisibility(container);
 
-            if (expanding){
-              scrollAlignLeftStable(heading, 0);
-              const firstChildHeading = getFirstChildHeading(body) || heading;
-              requestAnimationFrame(()=> scrollAlignLeftStable(firstChildHeading, 0));
-              pulseRail(body);        // 導軌脈衝
-              glowJustOpened(wrap);   // 標題柔光
-            }else{
-              scrollAlignLeftStable(heading, 0);
-            }
+            // 動畫完成後，立即校正滾動位置
+            // 使用兩個 requestAnimationFrame 確保 DOM 完全更新後再校正
+            requestAnimationFrame(()=>{
+              requestAnimationFrame(()=>{
+                const currentHeadingRect = heading.getBoundingClientRect();
+                const currentWrapRect = mainWrap.getBoundingClientRect();
+                const currentOffset = currentHeadingRect.top - currentWrapRect.top + mainWrap.scrollTop;
+
+                // 計算需要校正的距離
+                const scrollCorrection = currentOffset - offsetBeforeAnimation;
+
+                // 校正滾動位置，使標題保持在原來的視覺位置
+                // 對於收合操作，需要更積極地校正
+                if(Math.abs(scrollCorrection) > 0.5){
+                  mainWrap.scrollTop = mainWrap.scrollTop - scrollCorrection;
+                }
+
+                // 然後再執行左對齊
+                scrollAlignLeftStable(heading, 0);
+
+                if (expanding){
+                  const firstChildHeading = getFirstChildHeading(body) || heading;
+                  requestAnimationFrame(()=> scrollAlignLeftStable(firstChildHeading, 0));
+                  pulseRail(body);        // 導軌脈衝
+                  glowJustOpened(wrap);   // 標題柔光
+                }
+              });
+            });
           });
         };
 
