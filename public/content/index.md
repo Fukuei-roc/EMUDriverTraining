@@ -81,7 +81,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
       - EMU800型：ED車電氣室、EMA車客室、EP車電氣室、EMB車客室
     - EP軔機單元(BOUN)NFB
       - EMU700型：EMC車駕駛室、EP車電氣室、ET車電氣室、EM車客室
-      - EMU800型：ED車電氣室、EMA車客室、EP車電氣室、EMB車客室
+      - EMU800型：ED車駕駛室、EMA車客室、EP車電氣室、EMB車客室
     - APC電源(APCN)NFB
       - 位於EP車電氣室
     - 停留軔機隔離開關考克
@@ -159,7 +159,7 @@ description: 電聯車司機員課程 — EMU700、EMU800系列基礎介紹
           - ![TCMS 電車線電壓](./images/20221230_132650.jpg)
         - 應急處理：降弓、KEY-OFF重新啟動
       - TCU故障
-        - 應急處理：查看TCMS之VCBAR方框哪車未亮起，再至該車將((KslAVyvAW))轉1位。
+        - 應急處理：查看TCMS之VCBAR方框哪車未亮起，再至該車將主變流器隔離(CCOS)開關轉1位。
         - ![TCMS VCBAR](./images/20221230_131715.jpg)
         - ![CCOS 0位](./images/20240307_125425.jpg)
         - ![CCOS 1位](./images/20221230_132233.jpg)
